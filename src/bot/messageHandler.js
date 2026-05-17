@@ -1,4 +1,5 @@
 import { parseCustomerMessage } from "../ai/intentParser.js";
+import { handleAdminCommand, isAdminCommand, shouldBlockCustomerMessages } from "../admin/adminCommands.js";
 import { CUSTOMER_INTENT } from "../ai/intentTypes.js";
 import { formatMenuForWhatsApp, formatProductSuggestions } from "../menu/menuFormatter.js";
 import {
@@ -28,6 +29,28 @@ export async function handleCustomerMessage({
 }) {
   if (!customerPhone) {
     throw new Error("customerPhone es obligatorio.");
+  }
+
+  if (isAdminCommand(messageText)) {
+    const adminResult = await handleAdminCommand({
+      customerPhone,
+      messageText
+    });
+
+    return {
+      parsedMessage: null,
+      order: null,
+      reply: adminResult.reply,
+      admin: adminResult
+    };
+  }
+
+  if (shouldBlockCustomerMessages()) {
+    return {
+      parsedMessage: null,
+      order: null,
+      reply: "En este momento el bot está pausado. Te responderemos manualmente a la brevedad."
+    };
   }
 
   const order = getOrCreateOrderSession(customerPhone);

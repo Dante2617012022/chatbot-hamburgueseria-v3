@@ -10,6 +10,7 @@ import { clearMessageEventsForTests } from "./messageRepository.js";
 import { clearCustomersForTests } from "./customerRepository.js";
 import { clearPaymentRecordsForTests } from "../payments/paymentRepository.js";
 import { clearLocalNotificationsForTests } from "../notifications/notificationRepository.js";
+import { clearSettingsForTests } from "./settingsRepository.js";
 
 export function getOrCreateOrderSession(customerPhone) {
   if (!customerPhone) {
@@ -45,6 +46,7 @@ export function getAllSessions() {
 }
 
 export function resetSessionsForTests() {
+  clearSettingsForTests();
   clearLocalNotificationsForTests();
   clearPaymentRecordsForTests();
   clearActiveOrdersForTests();

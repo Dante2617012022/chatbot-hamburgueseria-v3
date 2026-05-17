@@ -134,5 +134,11 @@ function runMigrations(database) {
 
     CREATE INDEX IF NOT EXISTS idx_local_notifications_type
       ON local_notifications(type);
+
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 }
