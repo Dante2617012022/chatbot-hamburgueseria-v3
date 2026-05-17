@@ -8,6 +8,7 @@ import {
 import { getPendingLocalNotifications } from "../notifications/notificationRepository.js";
 import { formatPrice } from "../menu/menuFormatter.js";
 import { BUSINESS_OPEN_OVERRIDE, formatBusinessAvailability, setBusinessOpenOverride } from "../business/businessHoursService.js";
+import { formatStockStatus, setProductAvailabilityByQuery } from "../menu/stockService.js";
 
 export function isAdminCommand(messageText) {
   return typeof messageText === "string" &&
@@ -47,6 +48,15 @@ export async function handleAdminCommand({
 
     case "pedidos":
       return adminReply(formatActiveOrders());
+
+    case "stock":
+      return adminReply(await formatStockStatus());
+
+    case "agotado":
+      return adminReply(await handleStockChange(command.args, false));
+
+    case "disponible":
+      return adminReply(await handleStockChange(command.args, true));
 
     case "horario":
       return adminReply(await formatBusinessAvailability());
@@ -98,6 +108,30 @@ function adminReply(reply) {
   };
 }
 
+async function handleStockChange(args, available) {
+  const query = args.join(" ").trim();
+
+  if (!query) {
+    return available
+      ? "Indicá el producto a marcar como disponible. Ejemplo: /admin disponible bacon doble"
+      : "Indicá el producto a marcar como agotado. Ejemplo: /admin agotado bacon doble";
+  }
+
+  const result = await setProductAvailabilityByQuery({
+    query,
+    available,
+    reason: available ? null : "Marcado manualmente por admin"
+  });
+
+  if (!result.ok) {
+    return `No encontré el producto "${query}". Probá escribirlo de otra forma.`;
+  }
+
+  return available
+    ? `Producto marcado como disponible: *${result.product.nombre}*.`
+    : `Producto marcado como agotado: *${result.product.nombre}*.`;
+}
+
 function formatAdminHelp() {
   return [
     "*Comandos admin disponibles:*",
@@ -106,6 +140,9 @@ function formatAdminHelp() {
     "/admin estado",
     "/admin pedidos",
     "/admin notificaciones",
+    "/admin stock",
+    "/admin agotado <producto>",
+    "/admin disponible <producto>",
     "/admin horario",
     "/admin abrir",
     "/admin cerrar",

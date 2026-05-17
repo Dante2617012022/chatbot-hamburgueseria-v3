@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { getProductAvailabilityOverridesMap } from "./stockRepository.js";
+
 const DEFAULT_MENU_PATH = path.join(process.cwd(), "data", "menu.json");
 
 let cachedMenu = null;
@@ -22,7 +24,7 @@ export async function loadMenu({ forceReload = false } = {}) {
 
 export async function getProducts({ onlyAvailable = true } = {}) {
   const menu = await loadMenu();
-  const products = menu.productos || [];
+  const products = applyAvailabilityOverrides(menu.productos || []);
 
   if (!onlyAvailable) {
     return products;
@@ -44,6 +46,25 @@ export async function getCategories() {
 export async function getBusinessConfig() {
   const menu = await loadMenu();
   return menu.negocio || {};
+}
+
+function applyAvailabilityOverrides(products) {
+  const overrides = getProductAvailabilityOverridesMap();
+
+  return products.map((product) => {
+    const override = overrides.get(product.id);
+
+    if (!override) {
+      return { ...product };
+    }
+
+    return {
+      ...product,
+      disponible: override.available,
+      stockReason: override.reason,
+      stockUpdatedAt: override.updatedAt
+    };
+  });
 }
 
 function validateMenu(menu) {

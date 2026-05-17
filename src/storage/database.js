@@ -140,5 +140,15 @@ function runMigrations(database) {
       value TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS product_availability (
+      product_id TEXT PRIMARY KEY,
+      available INTEGER NOT NULL,
+      reason TEXT,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_product_availability_available
+      ON product_availability(available);
   `);
 }

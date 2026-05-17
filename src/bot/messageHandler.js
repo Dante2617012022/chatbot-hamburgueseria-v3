@@ -161,6 +161,16 @@ async function handleAddProduct({ customerPhone, order, parsedMessage }) {
   const product = parsedMessage.entities.product;
   const quantity = parsedMessage.entities.quantity || 1;
 
+  if (parsedMessage.status === "PRODUCT_UNAVAILABLE" && product) {
+    return {
+      parsedMessage,
+      order,
+      reply:
+        `Por ahora *${product.nombre}* no está disponible.\n` +
+        buildProductNotClearReply(parsedMessage)
+    };
+  }
+
   if (!product) {
     return {
       parsedMessage,

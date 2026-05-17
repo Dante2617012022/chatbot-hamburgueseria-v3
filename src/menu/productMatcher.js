@@ -49,7 +49,8 @@ function formatProduct(product) {
     categoria: product.categoria,
     descripcion: product.descripcion,
     precio: product.precio,
-    disponible: product.disponible
+    disponible: product.disponible,
+    stockReason: product.stockReason || null
   };
 }
 
@@ -72,7 +73,8 @@ export async function findBestProduct(
   {
     minConfidence = DEFAULT_MIN_CONFIDENCE,
     autoConfidence = DEFAULT_AUTO_CONFIDENCE,
-    maxSuggestions = 3
+    maxSuggestions = 3,
+    onlyAvailable = true
   } = {}
 ) {
   const normalizedQuery = normalizeText(query);
@@ -87,11 +89,22 @@ export async function findBestProduct(
     };
   }
 
-  const products = await getProducts({ onlyAvailable: true });
-
-  const exactProduct = findExactProduct(products, normalizedQuery);
+  const allProducts = await getProducts({ onlyAvailable: false });
+  const exactProduct = findExactProduct(allProducts, normalizedQuery);
 
   if (exactProduct) {
+    if (onlyAvailable && exactProduct.disponible !== true) {
+      const suggestions = await buildAvailableSuggestions(normalizedQuery, maxSuggestions);
+
+      return {
+        ok: false,
+        status: "PRODUCT_UNAVAILABLE",
+        confidence: 1,
+        product: formatProduct(exactProduct),
+        suggestions
+      };
+    }
+
     return {
       ok: true,
       status: "AUTO_MATCH",
@@ -107,6 +120,10 @@ export async function findBestProduct(
       ]
     };
   }
+
+  const products = onlyAvailable
+    ? allProducts.filter((product) => product.disponible === true)
+    : allProducts;
 
   const fuse = createFuse(products);
   const results = fuse.search(normalizedQuery);
@@ -133,6 +150,16 @@ export async function findBestProduct(
     precio: result.item.precio,
     confidence: scoreToConfidence(result.score)
   }));
+
+  if (onlyAvailable && best.item.disponible !== true) {
+    return {
+      ok: false,
+      status: "PRODUCT_UNAVAILABLE",
+      confidence: bestConfidence,
+      product: formatProduct(best.item),
+      suggestions: await buildAvailableSuggestions(normalizedQuery, maxSuggestions)
+    };
+  }
 
   if (bestConfidence < minConfidence) {
     return {
@@ -168,4 +195,19 @@ export async function findBestProduct(
     product: formatProduct(best.item),
     suggestions
   };
+}
+
+async function buildAvailableSuggestions(normalizedQuery, maxSuggestions) {
+  const availableProducts = await getProducts({ onlyAvailable: true });
+  const fuse = createFuse(availableProducts);
+
+  return fuse
+    .search(normalizedQuery)
+    .slice(0, maxSuggestions)
+    .map((result) => ({
+      id: result.item.id,
+      nombre: result.item.nombre,
+      precio: result.item.precio,
+      confidence: scoreToConfidence(result.score)
+    }));
 }

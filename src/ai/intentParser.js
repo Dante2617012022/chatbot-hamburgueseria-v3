@@ -293,7 +293,7 @@ async function parseProductActionMessage({
       status: productMatch.status || "PRODUCT_NOT_FOUND",
       entities: {
         quantity: quantity || 1,
-        product: null,
+        product: productMatch.product || null,
         suggestions: productMatch.suggestions || []
       },
       replyHint: "No estoy seguro de qué producto querés. ¿Me lo podés escribir de otra forma?"
@@ -318,6 +318,22 @@ async function parsePossibleProductOnlyMessage({ rawText, normalizedText }) {
   const productMatch = await findBestProduct(normalizedText);
 
   if (!productMatch.ok) {
+    if (productMatch.status === "PRODUCT_UNAVAILABLE") {
+      return buildParsedMessage({
+        rawText,
+        normalizedText,
+        intent: CUSTOMER_INTENT.ADD_PRODUCT,
+        confidence: productMatch.confidence || 0.8,
+        status: "PRODUCT_UNAVAILABLE",
+        entities: {
+          quantity: 1,
+          product: productMatch.product,
+          suggestions: productMatch.suggestions || []
+        },
+        replyHint: "Ese producto no está disponible en este momento."
+      });
+    }
+
     return buildParsedMessage({
       rawText,
       normalizedText,
@@ -373,13 +389,19 @@ function parsePaymentMessage({ rawText, normalizedText }) {
 }
 
 async function findProductWithFallback(productQuery, normalizedText) {
-  let productMatch = await findBestProduct(productQuery);
+  const productMatch = await findBestProduct(productQuery);
 
-  if (productMatch.ok) {
+  if (productMatch.ok || productMatch.status === "PRODUCT_UNAVAILABLE") {
     return productMatch;
   }
 
-  return findBestProduct(normalizedText);
+  const fallbackMatch = await findBestProduct(normalizedText);
+
+  if (fallbackMatch.ok || fallbackMatch.status === "PRODUCT_UNAVAILABLE") {
+    return fallbackMatch;
+  }
+
+  return productMatch;
 }
 
 function cleanProductQuery(normalizedText, actionKeywords) {
