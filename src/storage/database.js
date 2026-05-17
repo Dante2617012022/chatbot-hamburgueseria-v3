@@ -108,5 +108,31 @@ function runMigrations(database) {
 
     CREATE INDEX IF NOT EXISTS idx_payment_records_status
       ON payment_records(status);
+
+    CREATE TABLE IF NOT EXISTS local_notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id TEXT NOT NULL,
+      customer_phone TEXT,
+      type TEXT NOT NULL,
+      channel TEXT NOT NULL,
+      destination TEXT,
+      status TEXT NOT NULL,
+      message TEXT NOT NULL,
+      payload_json TEXT,
+      error_message TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      sent_at TEXT,
+      UNIQUE(order_id, type)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_local_notifications_order_id
+      ON local_notifications(order_id);
+
+    CREATE INDEX IF NOT EXISTS idx_local_notifications_status
+      ON local_notifications(status);
+
+    CREATE INDEX IF NOT EXISTS idx_local_notifications_type
+      ON local_notifications(type);
   `);
 }

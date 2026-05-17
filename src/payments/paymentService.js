@@ -1,4 +1,5 @@
 import { markAsPaid } from "../orders/orderService.js";
+import { createLocalNotificationForOrder, NOTIFICATION_TYPE } from "../notifications/notificationService.js";
 import {
   getActiveOrderByOrderId,
   saveActiveOrder
@@ -121,10 +122,16 @@ export function approveDryRunPaymentByOrderId(orderId) {
   markAsPaid(order);
   saveActiveOrder(order.customerPhone, order);
 
+  const notification = createLocalNotificationForOrder({
+    order,
+    type: NOTIFICATION_TYPE.ORDER_PAID
+  });
+
   return {
     payment: updatedPayment,
     order,
-    orderUpdated: true
+    orderUpdated: true,
+    notification
   };
 }
 
@@ -179,6 +186,7 @@ export async function processMercadoPagoWebhook({
 
   let order = null;
   let orderUpdated = false;
+  let notification = null;
 
   if (normalizedStatus === "APPROVED") {
     order = getActiveOrderByOrderId(orderId);
@@ -187,6 +195,11 @@ export async function processMercadoPagoWebhook({
       markAsPaid(order);
       saveActiveOrder(order.customerPhone, order);
       orderUpdated = true;
+
+      notification = createLocalNotificationForOrder({
+        order,
+        type: NOTIFICATION_TYPE.ORDER_PAID
+      });
     }
   }
 
@@ -196,7 +209,8 @@ export async function processMercadoPagoWebhook({
     status: normalizedStatus,
     payment: updatedPayment,
     order,
-    orderUpdated
+    orderUpdated,
+    notification
   };
 }
 

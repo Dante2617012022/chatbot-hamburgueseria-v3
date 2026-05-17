@@ -11,6 +11,7 @@ import {
 } from "../orders/orderService.js";
 import { formatOrderSummary } from "../orders/orderFormatter.js";
 import { createPaymentPreferenceForOrder } from "../payments/paymentService.js";
+import { createLocalNotificationForOrder, NOTIFICATION_TYPE } from "../notifications/notificationService.js";
 import {
   clearOrderSession,
   getOrCreateOrderSession,
@@ -253,9 +254,15 @@ async function handleConfirmOrder({ customerPhone, order, parsedMessage }) {
       };
     }
 
+    const notification = createLocalNotificationForOrder({
+      order,
+      type: NOTIFICATION_TYPE.ORDER_CONFIRMED
+    });
+
     return {
       parsedMessage,
       order,
+      notification,
       reply:
         "Pedido confirmado.\n\n" +
         formatOrderSummary(order) +
