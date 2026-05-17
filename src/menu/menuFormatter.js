@@ -25,7 +25,7 @@ export async function formatMenuForWhatsApp() {
     for (const product of products) {
       lines.push(`- ${product.nombre}: $${formatPrice(product.precio)}`);
 
-      if (product.descripcion) {
+      if (shouldShowDescription(product)) {
         lines.push(`  ${product.descripcion}`);
       }
     }
@@ -54,4 +54,22 @@ export function formatProductSuggestions(suggestions = []) {
 
 export function formatPrice(value) {
   return new Intl.NumberFormat("es-AR").format(value);
+}
+
+function shouldShowDescription(product) {
+  if (!product.descripcion) {
+    return false;
+  }
+
+  const name = normalizeForDescription(product.nombre);
+  const description = normalizeForDescription(product.descripcion);
+
+  return description !== name;
+}
+
+function normalizeForDescription(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[.]/g, "")
+    .trim();
 }

@@ -29,7 +29,7 @@ test("handleCustomerMessage agrega papas y coca grande", async () => {
   assert.equal(result.order.items.length, 2);
   assert.equal(result.order.total, 9500);
   assert.match(result.reply, /Papas clasicas/);
-  assert.match(result.reply, /1.5l/);
+  assert.match(result.reply, /Gaseosa 1.5L/);
 });
 
 test("parseMultiProductMessage detecta dos dobles una bacon y una cheese", async () => {

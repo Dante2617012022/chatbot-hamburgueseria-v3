@@ -554,9 +554,9 @@
     },
     {
       "id": "bebida_15l",
-      "nombre": "1.5l",
+      "nombre": "Gaseosa 1.5L",
       "categoria": "bebidas",
-      "descripcion": "Bebida de 1.5 litros.",
+      "descripcion": "Gaseosa de 1.5 litros.",
       "precio": 3500,
       "disponible": true,
       "alias": [
