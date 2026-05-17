@@ -1,4 +1,5 @@
 import { parseCustomerMessage } from "../ai/intentParser.js";
+import { parseCustomerMessageWithAiFallback, shouldUseAiFallback } from "../ai/aiFallbackParser.js";
 import { handleAdminCommand, isAdminCommand, shouldBlockCustomerMessages } from "../admin/adminCommands.js";
 import { CUSTOMER_INTENT } from "../ai/intentTypes.js";
 import { formatMenuForWhatsApp, formatProductSuggestions } from "../menu/menuFormatter.js";
@@ -68,7 +69,17 @@ export async function handleCustomerMessage({
   }
 
   const order = getOrCreateOrderSession(customerPhone);
-  const parsedMessage = await parseCustomerMessage(messageText);
+  let parsedMessage = await parseCustomerMessage(messageText);
+
+  if (shouldUseAiFallback(parsedMessage)) {
+    const aiParsedMessage = await parseCustomerMessageWithAiFallback(messageText, {
+      previousParsedMessage: parsedMessage
+    });
+
+    if (aiParsedMessage) {
+      parsedMessage = aiParsedMessage;
+    }
+  }
 
   saveMessageEvent({
     customerPhone,
