@@ -1,0 +1,31 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Logs
+logs/
+*.log
+
+# Database
+data/*.sqlite
+data/*.sqlite3
+data/*.db
+
+# WhatsApp / Baileys session
+auth_info_baileys/
+baileys_auth/
+session/
+sessions/
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Coverage
+coverage/
