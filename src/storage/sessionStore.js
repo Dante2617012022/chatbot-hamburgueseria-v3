@@ -1,20 +1,27 @@
 import { createEmptyOrder } from "../orders/orderService.js";
-
-const sessions = new Map();
+import {
+  clearActiveOrdersForTests,
+  deleteActiveOrderByPhone,
+  getActiveOrderByPhone,
+  getAllActiveOrders,
+  saveActiveOrder
+} from "./orderRepository.js";
+import { clearMessageEventsForTests } from "./messageRepository.js";
+import { clearCustomersForTests } from "./customerRepository.js";
 
 export function getOrCreateOrderSession(customerPhone) {
   if (!customerPhone) {
     throw new Error("customerPhone es obligatorio.");
   }
 
-  const existingOrder = sessions.get(customerPhone);
+  const existingOrder = getActiveOrderByPhone(customerPhone);
 
   if (existingOrder) {
     return existingOrder;
   }
 
   const newOrder = createEmptyOrder({ customerPhone });
-  sessions.set(customerPhone, newOrder);
+  saveActiveOrder(customerPhone, newOrder);
 
   return newOrder;
 }
@@ -24,21 +31,19 @@ export function saveOrderSession(customerPhone, order) {
     throw new Error("customerPhone es obligatorio.");
   }
 
-  sessions.set(customerPhone, order);
-  return order;
+  return saveActiveOrder(customerPhone, order);
 }
 
 export function clearOrderSession(customerPhone) {
-  sessions.delete(customerPhone);
+  deleteActiveOrderByPhone(customerPhone);
 }
 
 export function getAllSessions() {
-  return Array.from(sessions.entries()).map(([phone, order]) => ({
-    phone,
-    order
-  }));
+  return getAllActiveOrders();
 }
 
 export function resetSessionsForTests() {
-  sessions.clear();
+  clearActiveOrdersForTests();
+  clearMessageEventsForTests();
+  clearCustomersForTests();
 }

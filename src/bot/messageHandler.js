@@ -15,6 +15,10 @@ import {
   getOrCreateOrderSession,
   saveOrderSession
 } from "../storage/sessionStore.js";
+import {
+  saveMessageEvent,
+  saveUnrecognizedMessage
+} from "../storage/messageRepository.js";
 
 export async function handleCustomerMessage({
   customerPhone,
@@ -26,6 +30,26 @@ export async function handleCustomerMessage({
 
   const order = getOrCreateOrderSession(customerPhone);
   const parsedMessage = await parseCustomerMessage(messageText);
+
+  saveMessageEvent({
+    customerPhone,
+    direction: "IN",
+    text: messageText,
+    intent: parsedMessage.intent,
+    status: parsedMessage.status,
+    payload: parsedMessage
+  });
+
+  if (
+    parsedMessage.intent === CUSTOMER_INTENT.UNKNOWN ||
+    ["NO_MATCH", "PRODUCT_NOT_FOUND", "LOW_CONFIDENCE", "AMBIGUOUS"].includes(parsedMessage.status)
+  ) {
+    saveUnrecognizedMessage({
+      customerPhone,
+      text: messageText,
+      parsedMessage
+    });
+  }
 
   switch (parsedMessage.intent) {
     case CUSTOMER_INTENT.VIEW_MENU:
