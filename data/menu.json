@@ -42,7 +42,13 @@
       "descripcion": "Cheeseburger simple.",
       "precio": 8000,
       "disponible": true,
-      "alias": ["cheese simple", "cheeseburger simple", "hamburguesa simple", "simple cheese", "simple"]
+      "alias": [
+        "cheese simple",
+        "cheeseburger simple",
+        "hamburguesa simple",
+        "simple cheese",
+        "simple"
+      ]
     },
     {
       "id": "cheeseburger_doble",
@@ -51,7 +57,12 @@
       "descripcion": "Cheeseburger doble.",
       "precio": 9500,
       "disponible": true,
-      "alias": ["cheese doble", "cheeseburger doble", "doble cheese", "doble cheeseburger"]
+      "alias": [
+        "cheese doble",
+        "cheeseburger doble",
+        "doble cheese",
+        "doble cheeseburger"
+      ]
     },
     {
       "id": "cheeseburger_triple",
@@ -60,7 +71,12 @@
       "descripcion": "Cheeseburger triple.",
       "precio": 12000,
       "disponible": true,
-      "alias": ["cheese triple", "cheeseburger triple", "triple cheese", "triple cheeseburger"]
+      "alias": [
+        "cheese triple",
+        "cheeseburger triple",
+        "triple cheese",
+        "triple cheeseburger"
+      ]
     },
     {
       "id": "bacon_cheese_simple",
@@ -69,7 +85,12 @@
       "descripcion": "Bacon cheese simple.",
       "precio": 8500,
       "disponible": true,
-      "alias": ["bacon simple", "beicon simple", "bacon cheese", "hamburguesa bacon simple"]
+      "alias": [
+        "bacon simple",
+        "beicon simple",
+        "bacon cheese",
+        "hamburguesa bacon simple"
+      ]
     },
     {
       "id": "bacon_cheese_doble",
@@ -78,7 +99,12 @@
       "descripcion": "Bacon cheese doble.",
       "precio": 10000,
       "disponible": true,
-      "alias": ["bacon doble", "beicon doble", "doble bacon", "bacon cheese doble"]
+      "alias": [
+        "bacon doble",
+        "beicon doble",
+        "doble bacon",
+        "bacon cheese doble"
+      ]
     },
     {
       "id": "bacon_cheese_triple",
@@ -87,7 +113,12 @@
       "descripcion": "Bacon cheese triple.",
       "precio": 12000,
       "disponible": true,
-      "alias": ["bacon triple", "beicon triple", "triple bacon", "bacon cheese triple"]
+      "alias": [
+        "bacon triple",
+        "beicon triple",
+        "triple bacon",
+        "bacon cheese triple"
+      ]
     },
     {
       "id": "cuarto_a_simple",
@@ -96,7 +127,11 @@
       "descripcion": "Cuarto A simple.",
       "precio": 8000,
       "disponible": true,
-      "alias": ["cuarto simple", "cuarto a simple", "cuarta simple"]
+      "alias": [
+        "cuarto simple",
+        "cuarto a simple",
+        "cuarta simple"
+      ]
     },
     {
       "id": "cuarto_a_doble",
@@ -105,7 +140,11 @@
       "descripcion": "Cuarto A doble.",
       "precio": 9500,
       "disponible": true,
-      "alias": ["cuarto doble", "cuarto a doble", "doble cuarto"]
+      "alias": [
+        "cuarto doble",
+        "cuarto a doble",
+        "doble cuarto"
+      ]
     },
     {
       "id": "cuarto_a_triple",
@@ -114,7 +153,11 @@
       "descripcion": "Cuarto A triple.",
       "precio": 12000,
       "disponible": true,
-      "alias": ["cuarto triple", "cuarto a triple", "triple cuarto"]
+      "alias": [
+        "cuarto triple",
+        "cuarto a triple",
+        "triple cuarto"
+      ]
     },
     {
       "id": "americana_20_simple",
@@ -123,7 +166,11 @@
       "descripcion": "Americana 2.0 simple.",
       "precio": 8500,
       "disponible": true,
-      "alias": ["americana simple", "americana 2 simple", "americana 2.0 simple"]
+      "alias": [
+        "americana simple",
+        "americana 2 simple",
+        "americana 2.0 simple"
+      ]
     },
     {
       "id": "americana_20_doble",
@@ -132,7 +179,11 @@
       "descripcion": "Americana 2.0 doble.",
       "precio": 10000,
       "disponible": true,
-      "alias": ["americana doble", "americana 2 doble", "americana 2.0 doble"]
+      "alias": [
+        "americana doble",
+        "americana 2 doble",
+        "americana 2.0 doble"
+      ]
     },
     {
       "id": "americana_20_triple",
@@ -141,7 +192,11 @@
       "descripcion": "Americana 2.0 triple.",
       "precio": 12000,
       "disponible": true,
-      "alias": ["americana triple", "americana 2 triple", "americana 2.0 triple"]
+      "alias": [
+        "americana triple",
+        "americana 2 triple",
+        "americana 2.0 triple"
+      ]
     },
     {
       "id": "big_camdis_simple",
@@ -150,7 +205,11 @@
       "descripcion": "Big camdis simple.",
       "precio": 8500,
       "disponible": true,
-      "alias": ["big simple", "big camdis", "big camdis simple"]
+      "alias": [
+        "big simple",
+        "big camdis",
+        "big camdis simple"
+      ]
     },
     {
       "id": "big_camdis_doble",
@@ -159,7 +218,11 @@
       "descripcion": "Big camdis doble.",
       "precio": 10000,
       "disponible": true,
-      "alias": ["big doble", "big camdis doble", "doble big camdis"]
+      "alias": [
+        "big doble",
+        "big camdis doble",
+        "doble big camdis"
+      ]
     },
     {
       "id": "big_camdis_triple",
@@ -168,7 +231,11 @@
       "descripcion": "Big camdis triple.",
       "precio": 12000,
       "disponible": true,
-      "alias": ["big triple", "big camdis triple", "triple big camdis"]
+      "alias": [
+        "big triple",
+        "big camdis triple",
+        "triple big camdis"
+      ]
     },
     {
       "id": "camdis_crispy_simple",
@@ -177,7 +244,11 @@
       "descripcion": "Camdis crispy simple.",
       "precio": 8500,
       "disponible": true,
-      "alias": ["crispy simple", "camdis crispy", "camdis crispy simple"]
+      "alias": [
+        "crispy simple",
+        "camdis crispy",
+        "camdis crispy simple"
+      ]
     },
     {
       "id": "camdis_crispy_doble",
@@ -186,7 +257,11 @@
       "descripcion": "Camdis crispy doble.",
       "precio": 10000,
       "disponible": true,
-      "alias": ["crispy doble", "camdis crispy doble", "doble crispy"]
+      "alias": [
+        "crispy doble",
+        "camdis crispy doble",
+        "doble crispy"
+      ]
     },
     {
       "id": "camdis_crispy_triple",
@@ -195,7 +270,11 @@
       "descripcion": "Camdis crispy triple.",
       "precio": 12000,
       "disponible": true,
-      "alias": ["crispy triple", "camdis crispy triple", "triple crispy"]
+      "alias": [
+        "crispy triple",
+        "camdis crispy triple",
+        "triple crispy"
+      ]
     },
     {
       "id": "araka_simple",
@@ -204,7 +283,10 @@
       "descripcion": "Araka simple.",
       "precio": 8500,
       "disponible": true,
-      "alias": ["araka", "araka simple"]
+      "alias": [
+        "araka",
+        "araka simple"
+      ]
     },
     {
       "id": "araka_doble",
@@ -213,7 +295,10 @@
       "descripcion": "Araka doble.",
       "precio": 9500,
       "disponible": true,
-      "alias": ["araka doble", "doble araka"]
+      "alias": [
+        "araka doble",
+        "doble araka"
+      ]
     },
     {
       "id": "araka_triple",
@@ -222,7 +307,10 @@
       "descripcion": "Araka triple.",
       "precio": 12000,
       "disponible": true,
-      "alias": ["araka triple", "triple araka"]
+      "alias": [
+        "araka triple",
+        "triple araka"
+      ]
     },
     {
       "id": "triple_l_simple",
@@ -231,7 +319,11 @@
       "descripcion": "Triple l simple.",
       "precio": 8500,
       "disponible": true,
-      "alias": ["triple l", "triple ele", "triple l simple"]
+      "alias": [
+        "triple l",
+        "triple ele",
+        "triple l simple"
+      ]
     },
     {
       "id": "triple_l_doble",
@@ -240,7 +332,10 @@
       "descripcion": "Triple l doble.",
       "precio": 10000,
       "disponible": true,
-      "alias": ["triple l doble", "triple ele doble"]
+      "alias": [
+        "triple l doble",
+        "triple ele doble"
+      ]
     },
     {
       "id": "triple_l_triple",
@@ -249,7 +344,10 @@
       "descripcion": "Triple l triple.",
       "precio": 12500,
       "disponible": true,
-      "alias": ["triple l triple", "triple ele triple"]
+      "alias": [
+        "triple l triple",
+        "triple ele triple"
+      ]
     },
     {
       "id": "onion_simple",
@@ -258,7 +356,11 @@
       "descripcion": "Onion simple.",
       "precio": 8500,
       "disponible": true,
-      "alias": ["onion", "onion simple", "cebolla simple"]
+      "alias": [
+        "onion",
+        "onion simple",
+        "cebolla simple"
+      ]
     },
     {
       "id": "onion_doble",
@@ -267,7 +369,11 @@
       "descripcion": "Onion doble.",
       "precio": 9500,
       "disponible": true,
-      "alias": ["onion doble", "doble onion", "cebolla doble"]
+      "alias": [
+        "onion doble",
+        "doble onion",
+        "cebolla doble"
+      ]
     },
     {
       "id": "onion_triple",
@@ -276,7 +382,11 @@
       "descripcion": "Onion triple.",
       "precio": 12000,
       "disponible": true,
-      "alias": ["onion triple", "triple onion", "cebolla triple"]
+      "alias": [
+        "onion triple",
+        "triple onion",
+        "cebolla triple"
+      ]
     },
     {
       "id": "nuggets_x6",
@@ -285,7 +395,12 @@
       "descripcion": "Nuggets x6.",
       "precio": 3000,
       "disponible": true,
-      "alias": ["nuggets 6", "nuggets x6", "6 nuggets", "nugget x6"]
+      "alias": [
+        "nuggets 6",
+        "nuggets x6",
+        "6 nuggets",
+        "nugget x6"
+      ]
     },
     {
       "id": "nuggets_x12",
@@ -294,7 +409,12 @@
       "descripcion": "Nuggets x12.",
       "precio": 5500,
       "disponible": true,
-      "alias": ["nuggets 12", "nuggets x12", "12 nuggets", "nugget x12"]
+      "alias": [
+        "nuggets 12",
+        "nuggets x12",
+        "12 nuggets",
+        "nugget x12"
+      ]
     },
     {
       "id": "papas_clasicas",
@@ -303,7 +423,13 @@
       "descripcion": "Papas clásicas.",
       "precio": 6000,
       "disponible": true,
-      "alias": ["papas", "papas clasicas", "papas clásicas", "papitas", "fritas"]
+      "alias": [
+        "papas",
+        "papas clasicas",
+        "papas clásicas",
+        "papitas",
+        "fritas"
+      ]
     },
     {
       "id": "papas_gratinadas",
@@ -312,7 +438,11 @@
       "descripcion": "Papas gratinadas.",
       "precio": 8000,
       "disponible": true,
-      "alias": ["gratinadas", "papas gratinadas", "papas con cheddar"]
+      "alias": [
+        "gratinadas",
+        "papas gratinadas",
+        "papas con cheddar"
+      ]
     },
     {
       "id": "papas_americanas",
@@ -321,7 +451,11 @@
       "descripcion": "Papas americanas.",
       "precio": 10000,
       "disponible": true,
-      "alias": ["americanas", "papas americanas", "papas estilo americano"]
+      "alias": [
+        "americanas",
+        "papas americanas",
+        "papas estilo americano"
+      ]
     },
     {
       "id": "queso_extra",
@@ -330,7 +464,13 @@
       "descripcion": "Queso extra.",
       "precio": 1000,
       "disponible": true,
-      "alias": ["extra queso", "queso extra", "mas queso", "más queso", "extra cheddar"]
+      "alias": [
+        "extra queso",
+        "queso extra",
+        "mas queso",
+        "más queso",
+        "extra cheddar"
+      ]
     },
     {
       "id": "bacon_extra",
@@ -339,7 +479,13 @@
       "descripcion": "Bacon extra.",
       "precio": 1000,
       "disponible": true,
-      "alias": ["extra bacon", "bacon extra", "mas bacon", "más bacon", "panceta extra"]
+      "alias": [
+        "extra bacon",
+        "bacon extra",
+        "mas bacon",
+        "más bacon",
+        "panceta extra"
+      ]
     },
     {
       "id": "papas_extra",
@@ -348,7 +494,12 @@
       "descripcion": "Papas extra.",
       "precio": 2500,
       "disponible": true,
-      "alias": ["extra papas", "papas extra", "mas papas", "más papas"]
+      "alias": [
+        "extra papas",
+        "papas extra",
+        "mas papas",
+        "más papas"
+      ]
     },
     {
       "id": "carne_extra",
@@ -357,7 +508,14 @@
       "descripcion": "Carne extra.",
       "precio": 2300,
       "disponible": true,
-      "alias": ["extra carne", "carne extra", "medallon extra", "medallón extra", "mas carne", "más carne"]
+      "alias": [
+        "extra carne",
+        "carne extra",
+        "medallon extra",
+        "medallón extra",
+        "mas carne",
+        "más carne"
+      ]
     },
     {
       "id": "salsa_extra",
@@ -366,7 +524,12 @@
       "descripcion": "Salsa extra.",
       "precio": 500,
       "disponible": true,
-      "alias": ["extra salsa", "salsa extra", "mas salsa", "más salsa"]
+      "alias": [
+        "extra salsa",
+        "salsa extra",
+        "mas salsa",
+        "más salsa"
+      ]
     },
     {
       "id": "lata",
@@ -375,7 +538,19 @@
       "descripcion": "Bebida en lata.",
       "precio": 1800,
       "disponible": true,
-      "alias": ["lata", "gaseosa lata", "bebida lata", "coca lata"]
+      "alias": [
+        "lata",
+        "gaseosa lata",
+        "bebida lata",
+        "coca lata",
+        "coca chica",
+        "latita",
+        "gaseosa chica",
+        "bebida chica",
+        "bebida en lata",
+        "sprite lata",
+        "fanta lata"
+      ]
     },
     {
       "id": "bebida_15l",
@@ -384,7 +559,23 @@
       "descripcion": "Bebida de 1.5 litros.",
       "precio": 3500,
       "disponible": true,
-      "alias": ["1.5", "1.5l", "litro y medio", "gaseosa 1.5", "bebida 1.5"]
+      "alias": [
+        "1.5",
+        "1.5l",
+        "litro y medio",
+        "gaseosa 1.5",
+        "bebida 1.5",
+        "coca grande",
+        "coca de litro",
+        "coca litro y medio",
+        "coca 1.5",
+        "coca 1.5l",
+        "gaseosa grande",
+        "bebida grande",
+        "coca litro",
+        "sprite grande",
+        "fanta grande"
+      ]
     }
   ]
 }
