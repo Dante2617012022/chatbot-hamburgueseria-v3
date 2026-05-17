@@ -8,6 +8,7 @@ import {
 } from "./orderRepository.js";
 import { clearMessageEventsForTests } from "./messageRepository.js";
 import { clearCustomersForTests } from "./customerRepository.js";
+import { clearPaymentRecordsForTests } from "../payments/paymentRepository.js";
 
 export function getOrCreateOrderSession(customerPhone) {
   if (!customerPhone) {
@@ -43,6 +44,7 @@ export function getAllSessions() {
 }
 
 export function resetSessionsForTests() {
+  clearPaymentRecordsForTests();
   clearActiveOrdersForTests();
   clearMessageEventsForTests();
   clearCustomersForTests();

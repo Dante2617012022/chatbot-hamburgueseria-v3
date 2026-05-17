@@ -10,6 +10,7 @@ import {
   setPaymentMethod
 } from "../orders/orderService.js";
 import { formatOrderSummary } from "../orders/orderFormatter.js";
+import { createPaymentPreferenceForOrder } from "../payments/paymentService.js";
 import {
   clearOrderSession,
   getOrCreateOrderSession,
@@ -227,10 +228,30 @@ function handleChoosePayment({ customerPhone, order, parsedMessage }) {
   };
 }
 
-function handleConfirmOrder({ customerPhone, order, parsedMessage }) {
+async function handleConfirmOrder({ customerPhone, order, parsedMessage }) {
   try {
     confirmOrder(order);
     saveOrderSession(customerPhone, order);
+
+    if (order.paymentMethod === "MERCADO_PAGO") {
+      const paymentResult = await createPaymentPreferenceForOrder(order);
+
+      const dryRunNotice = paymentResult.isDryRun
+        ? "\n\n_Modo desarrollo: este link de pago es simulado y no cobra dinero._"
+        : "";
+
+      return {
+        parsedMessage,
+        order,
+        reply:
+          "Pedido confirmado.\n\n" +
+          formatOrderSummary(order) +
+          "\n\nLink de pago Mercado Pago:\n" +
+          paymentResult.initPoint +
+          dryRunNotice +
+          "\n\nCuando el pago esté aprobado, vamos a marcar el pedido como pagado."
+      };
+    }
 
     return {
       parsedMessage,
@@ -238,7 +259,7 @@ function handleConfirmOrder({ customerPhone, order, parsedMessage }) {
       reply:
         "Pedido confirmado.\n\n" +
         formatOrderSummary(order) +
-        "\n\nEn el próximo paso vamos a generar el pago o avisar al local."
+        "\n\nTu pedido quedó confirmado. En breve lo revisa el local."
     };
   } catch (error) {
     return {

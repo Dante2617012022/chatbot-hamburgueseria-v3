@@ -78,5 +78,32 @@ function runMigrations(database) {
 
     CREATE INDEX IF NOT EXISTS idx_message_events_status
       ON message_events(status);
+
+    CREATE TABLE IF NOT EXISTS payment_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id TEXT NOT NULL UNIQUE,
+      customer_phone TEXT,
+      provider TEXT NOT NULL,
+      preference_id TEXT,
+      payment_id TEXT,
+      external_reference TEXT,
+      status TEXT NOT NULL,
+      init_point TEXT,
+      sandbox_init_point TEXT,
+      amount INTEGER NOT NULL,
+      currency TEXT NOT NULL,
+      raw_json TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_payment_records_order_id
+      ON payment_records(order_id);
+
+    CREATE INDEX IF NOT EXISTS idx_payment_records_customer_phone
+      ON payment_records(customer_phone);
+
+    CREATE INDEX IF NOT EXISTS idx_payment_records_status
+      ON payment_records(status);
   `);
 }
