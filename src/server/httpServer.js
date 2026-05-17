@@ -5,6 +5,7 @@ import {
   processMercadoPagoWebhook
 } from "../payments/paymentService.js";
 import { logger } from "../utils/logger.js";
+import { dispatchPendingLocalNotifications } from "../notifications/notificationDispatcher.js";
 
 export function createHttpServer() {
   const app = express();
@@ -50,6 +51,32 @@ export function createHttpServer() {
       res.status(500).json({
         ok: false,
         error: "WEBHOOK_PROCESSING_ERROR"
+      });
+    }
+  });
+
+  app.post("/dev/notifications/dispatch", async (req, res) => {
+    try {
+      if (process.env.NODE_ENV === "production") {
+        return res.status(403).json({
+          ok: false,
+          error: "NOT_ALLOWED_IN_PRODUCTION"
+        });
+      }
+
+      const result = await dispatchPendingLocalNotifications({
+        channel: req.body?.channel || "INTERNAL",
+        dryRun: true
+      });
+
+      res.json({
+        ok: true,
+        result
+      });
+    } catch (error) {
+      res.status(400).json({
+        ok: false,
+        error: error.message
       });
     }
   });

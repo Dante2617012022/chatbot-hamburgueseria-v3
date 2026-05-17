@@ -18,3 +18,28 @@ export async function sendTextMessage(sock, jid, text) {
     text
   });
 }
+
+export async function sendTextToPhone(sock, phone, text) {
+  const jid = phoneToWhatsAppJid(phone);
+  return sendTextMessage(sock, jid, text);
+}
+
+export function phoneToWhatsAppJid(phone) {
+  if (!phone) {
+    throw new Error("phone es obligatorio.");
+  }
+
+  const value = String(phone).trim();
+
+  if (value.includes("@")) {
+    return value;
+  }
+
+  const normalizedPhone = value.replace(/\D/g, "");
+
+  if (!normalizedPhone) {
+    throw new Error("phone inválido.");
+  }
+
+  return `${normalizedPhone}@s.whatsapp.net`;
+}

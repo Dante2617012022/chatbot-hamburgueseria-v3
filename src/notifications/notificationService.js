@@ -10,7 +10,7 @@ export const NOTIFICATION_TYPE = Object.freeze({
 export function createLocalNotificationForOrder({
   order,
   type = NOTIFICATION_TYPE.ORDER_CONFIRMED,
-  channel = "INTERNAL",
+  channel = process.env.LOCAL_NOTIFICATION_CHANNEL || "INTERNAL",
   destination = process.env.OWNER_PHONE || null
 }) {
   if (!order || typeof order !== "object") {

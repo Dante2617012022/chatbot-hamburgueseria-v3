@@ -6,7 +6,8 @@ import makeWASocket, {
 import qrcode from "qrcode-terminal";
 
 import { handleCustomerMessage } from "./messageHandler.js";
-import { sendTextMessage } from "./responseSender.js";
+import { sendTextMessage, sendTextToPhone } from "./responseSender.js";
+import { dispatchPendingLocalNotifications } from "../notifications/notificationDispatcher.js";
 import { logger } from "../utils/logger.js";
 
 export async function startWhatsAppBot() {
@@ -118,6 +119,14 @@ async function handleIncomingMessage(sock, message) {
     });
 
     await sendTextMessage(sock, jid, result.reply);
+
+    await dispatchPendingLocalNotifications({
+      channel: "WHATSAPP",
+      dryRun: false,
+      sendText: async ({ destination, message }) => {
+        await sendTextToPhone(sock, destination, message);
+      }
+    });
   } catch (error) {
     logger.error(
       {
