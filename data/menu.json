@@ -1,0 +1,390 @@
+{
+  "negocio": {
+    "nombre": "Camdis Hamburguesas",
+    "moneda": "ARS",
+    "delivery": {
+      "activo": true,
+      "costoBase": 0,
+      "pedidoMinimo": 0
+    }
+  },
+  "categorias": [
+    {
+      "id": "hamburguesas",
+      "nombre": "Hamburguesas",
+      "emoji": "🍔",
+      "orden": 1
+    },
+    {
+      "id": "acompanamientos",
+      "nombre": "Acompañamientos",
+      "emoji": "🍟",
+      "orden": 2
+    },
+    {
+      "id": "extras",
+      "nombre": "Extras",
+      "emoji": "➕",
+      "orden": 3
+    },
+    {
+      "id": "bebidas",
+      "nombre": "Bebidas",
+      "emoji": "🥤",
+      "orden": 4
+    }
+  ],
+  "productos": [
+    {
+      "id": "cheeseburger_simple",
+      "nombre": "Cheeseburger simple",
+      "categoria": "hamburguesas",
+      "descripcion": "Cheeseburger simple.",
+      "precio": 8000,
+      "disponible": true,
+      "alias": ["cheese simple", "cheeseburger simple", "hamburguesa simple", "simple cheese", "simple"]
+    },
+    {
+      "id": "cheeseburger_doble",
+      "nombre": "Cheeseburger doble",
+      "categoria": "hamburguesas",
+      "descripcion": "Cheeseburger doble.",
+      "precio": 9500,
+      "disponible": true,
+      "alias": ["cheese doble", "cheeseburger doble", "doble cheese", "doble cheeseburger"]
+    },
+    {
+      "id": "cheeseburger_triple",
+      "nombre": "Cheeseburger triple",
+      "categoria": "hamburguesas",
+      "descripcion": "Cheeseburger triple.",
+      "precio": 12000,
+      "disponible": true,
+      "alias": ["cheese triple", "cheeseburger triple", "triple cheese", "triple cheeseburger"]
+    },
+    {
+      "id": "bacon_cheese_simple",
+      "nombre": "Bacon cheese simple",
+      "categoria": "hamburguesas",
+      "descripcion": "Bacon cheese simple.",
+      "precio": 8500,
+      "disponible": true,
+      "alias": ["bacon simple", "beicon simple", "bacon cheese", "hamburguesa bacon simple"]
+    },
+    {
+      "id": "bacon_cheese_doble",
+      "nombre": "Bacon cheese doble",
+      "categoria": "hamburguesas",
+      "descripcion": "Bacon cheese doble.",
+      "precio": 10000,
+      "disponible": true,
+      "alias": ["bacon doble", "beicon doble", "doble bacon", "bacon cheese doble"]
+    },
+    {
+      "id": "bacon_cheese_triple",
+      "nombre": "Bacon cheese triple",
+      "categoria": "hamburguesas",
+      "descripcion": "Bacon cheese triple.",
+      "precio": 12000,
+      "disponible": true,
+      "alias": ["bacon triple", "beicon triple", "triple bacon", "bacon cheese triple"]
+    },
+    {
+      "id": "cuarto_a_simple",
+      "nombre": "Cuarto A simple",
+      "categoria": "hamburguesas",
+      "descripcion": "Cuarto A simple.",
+      "precio": 8000,
+      "disponible": true,
+      "alias": ["cuarto simple", "cuarto a simple", "cuarta simple"]
+    },
+    {
+      "id": "cuarto_a_doble",
+      "nombre": "Cuarto A doble",
+      "categoria": "hamburguesas",
+      "descripcion": "Cuarto A doble.",
+      "precio": 9500,
+      "disponible": true,
+      "alias": ["cuarto doble", "cuarto a doble", "doble cuarto"]
+    },
+    {
+      "id": "cuarto_a_triple",
+      "nombre": "Cuarto A triple",
+      "categoria": "hamburguesas",
+      "descripcion": "Cuarto A triple.",
+      "precio": 12000,
+      "disponible": true,
+      "alias": ["cuarto triple", "cuarto a triple", "triple cuarto"]
+    },
+    {
+      "id": "americana_20_simple",
+      "nombre": "Americana 2.0 simple",
+      "categoria": "hamburguesas",
+      "descripcion": "Americana 2.0 simple.",
+      "precio": 8500,
+      "disponible": true,
+      "alias": ["americana simple", "americana 2 simple", "americana 2.0 simple"]
+    },
+    {
+      "id": "americana_20_doble",
+      "nombre": "Americana 2.0 doble",
+      "categoria": "hamburguesas",
+      "descripcion": "Americana 2.0 doble.",
+      "precio": 10000,
+      "disponible": true,
+      "alias": ["americana doble", "americana 2 doble", "americana 2.0 doble"]
+    },
+    {
+      "id": "americana_20_triple",
+      "nombre": "Americana 2.0 triple",
+      "categoria": "hamburguesas",
+      "descripcion": "Americana 2.0 triple.",
+      "precio": 12000,
+      "disponible": true,
+      "alias": ["americana triple", "americana 2 triple", "americana 2.0 triple"]
+    },
+    {
+      "id": "big_camdis_simple",
+      "nombre": "Big camdis simple",
+      "categoria": "hamburguesas",
+      "descripcion": "Big camdis simple.",
+      "precio": 8500,
+      "disponible": true,
+      "alias": ["big simple", "big camdis", "big camdis simple"]
+    },
+    {
+      "id": "big_camdis_doble",
+      "nombre": "Big camdis doble",
+      "categoria": "hamburguesas",
+      "descripcion": "Big camdis doble.",
+      "precio": 10000,
+      "disponible": true,
+      "alias": ["big doble", "big camdis doble", "doble big camdis"]
+    },
+    {
+      "id": "big_camdis_triple",
+      "nombre": "Big camdis triple",
+      "categoria": "hamburguesas",
+      "descripcion": "Big camdis triple.",
+      "precio": 12000,
+      "disponible": true,
+      "alias": ["big triple", "big camdis triple", "triple big camdis"]
+    },
+    {
+      "id": "camdis_crispy_simple",
+      "nombre": "Camdis crispy simple",
+      "categoria": "hamburguesas",
+      "descripcion": "Camdis crispy simple.",
+      "precio": 8500,
+      "disponible": true,
+      "alias": ["crispy simple", "camdis crispy", "camdis crispy simple"]
+    },
+    {
+      "id": "camdis_crispy_doble",
+      "nombre": "Camdis crispy doble",
+      "categoria": "hamburguesas",
+      "descripcion": "Camdis crispy doble.",
+      "precio": 10000,
+      "disponible": true,
+      "alias": ["crispy doble", "camdis crispy doble", "doble crispy"]
+    },
+    {
+      "id": "camdis_crispy_triple",
+      "nombre": "Camdis crispy triple",
+      "categoria": "hamburguesas",
+      "descripcion": "Camdis crispy triple.",
+      "precio": 12000,
+      "disponible": true,
+      "alias": ["crispy triple", "camdis crispy triple", "triple crispy"]
+    },
+    {
+      "id": "araka_simple",
+      "nombre": "Araka simple",
+      "categoria": "hamburguesas",
+      "descripcion": "Araka simple.",
+      "precio": 8500,
+      "disponible": true,
+      "alias": ["araka", "araka simple"]
+    },
+    {
+      "id": "araka_doble",
+      "nombre": "Araka doble",
+      "categoria": "hamburguesas",
+      "descripcion": "Araka doble.",
+      "precio": 9500,
+      "disponible": true,
+      "alias": ["araka doble", "doble araka"]
+    },
+    {
+      "id": "araka_triple",
+      "nombre": "Araka triple",
+      "categoria": "hamburguesas",
+      "descripcion": "Araka triple.",
+      "precio": 12000,
+      "disponible": true,
+      "alias": ["araka triple", "triple araka"]
+    },
+    {
+      "id": "triple_l_simple",
+      "nombre": "Triple l simple",
+      "categoria": "hamburguesas",
+      "descripcion": "Triple l simple.",
+      "precio": 8500,
+      "disponible": true,
+      "alias": ["triple l", "triple ele", "triple l simple"]
+    },
+    {
+      "id": "triple_l_doble",
+      "nombre": "Triple l doble",
+      "categoria": "hamburguesas",
+      "descripcion": "Triple l doble.",
+      "precio": 10000,
+      "disponible": true,
+      "alias": ["triple l doble", "triple ele doble"]
+    },
+    {
+      "id": "triple_l_triple",
+      "nombre": "Triple l triple",
+      "categoria": "hamburguesas",
+      "descripcion": "Triple l triple.",
+      "precio": 12500,
+      "disponible": true,
+      "alias": ["triple l triple", "triple ele triple"]
+    },
+    {
+      "id": "onion_simple",
+      "nombre": "Onion simple",
+      "categoria": "hamburguesas",
+      "descripcion": "Onion simple.",
+      "precio": 8500,
+      "disponible": true,
+      "alias": ["onion", "onion simple", "cebolla simple"]
+    },
+    {
+      "id": "onion_doble",
+      "nombre": "Onion doble",
+      "categoria": "hamburguesas",
+      "descripcion": "Onion doble.",
+      "precio": 9500,
+      "disponible": true,
+      "alias": ["onion doble", "doble onion", "cebolla doble"]
+    },
+    {
+      "id": "onion_triple",
+      "nombre": "Onion triple",
+      "categoria": "hamburguesas",
+      "descripcion": "Onion triple.",
+      "precio": 12000,
+      "disponible": true,
+      "alias": ["onion triple", "triple onion", "cebolla triple"]
+    },
+    {
+      "id": "nuggets_x6",
+      "nombre": "Nuggets x6",
+      "categoria": "acompanamientos",
+      "descripcion": "Nuggets x6.",
+      "precio": 3000,
+      "disponible": true,
+      "alias": ["nuggets 6", "nuggets x6", "6 nuggets", "nugget x6"]
+    },
+    {
+      "id": "nuggets_x12",
+      "nombre": "Nuggets x12",
+      "categoria": "acompanamientos",
+      "descripcion": "Nuggets x12.",
+      "precio": 5500,
+      "disponible": true,
+      "alias": ["nuggets 12", "nuggets x12", "12 nuggets", "nugget x12"]
+    },
+    {
+      "id": "papas_clasicas",
+      "nombre": "Papas clasicas",
+      "categoria": "acompanamientos",
+      "descripcion": "Papas clásicas.",
+      "precio": 6000,
+      "disponible": true,
+      "alias": ["papas", "papas clasicas", "papas clásicas", "papitas", "fritas"]
+    },
+    {
+      "id": "papas_gratinadas",
+      "nombre": "Papas gratinadas",
+      "categoria": "acompanamientos",
+      "descripcion": "Papas gratinadas.",
+      "precio": 8000,
+      "disponible": true,
+      "alias": ["gratinadas", "papas gratinadas", "papas con cheddar"]
+    },
+    {
+      "id": "papas_americanas",
+      "nombre": "Papas americanas",
+      "categoria": "acompanamientos",
+      "descripcion": "Papas americanas.",
+      "precio": 10000,
+      "disponible": true,
+      "alias": ["americanas", "papas americanas", "papas estilo americano"]
+    },
+    {
+      "id": "queso_extra",
+      "nombre": "Queso extra",
+      "categoria": "extras",
+      "descripcion": "Queso extra.",
+      "precio": 1000,
+      "disponible": true,
+      "alias": ["extra queso", "queso extra", "mas queso", "más queso", "extra cheddar"]
+    },
+    {
+      "id": "bacon_extra",
+      "nombre": "Bacon extra",
+      "categoria": "extras",
+      "descripcion": "Bacon extra.",
+      "precio": 1000,
+      "disponible": true,
+      "alias": ["extra bacon", "bacon extra", "mas bacon", "más bacon", "panceta extra"]
+    },
+    {
+      "id": "papas_extra",
+      "nombre": "Papas extra",
+      "categoria": "extras",
+      "descripcion": "Papas extra.",
+      "precio": 2500,
+      "disponible": true,
+      "alias": ["extra papas", "papas extra", "mas papas", "más papas"]
+    },
+    {
+      "id": "carne_extra",
+      "nombre": "Carne extra",
+      "categoria": "extras",
+      "descripcion": "Carne extra.",
+      "precio": 2300,
+      "disponible": true,
+      "alias": ["extra carne", "carne extra", "medallon extra", "medallón extra", "mas carne", "más carne"]
+    },
+    {
+      "id": "salsa_extra",
+      "nombre": "Salsa extra",
+      "categoria": "extras",
+      "descripcion": "Salsa extra.",
+      "precio": 500,
+      "disponible": true,
+      "alias": ["extra salsa", "salsa extra", "mas salsa", "más salsa"]
+    },
+    {
+      "id": "lata",
+      "nombre": "Lata",
+      "categoria": "bebidas",
+      "descripcion": "Bebida en lata.",
+      "precio": 1800,
+      "disponible": true,
+      "alias": ["lata", "gaseosa lata", "bebida lata", "coca lata"]
+    },
+    {
+      "id": "bebida_15l",
+      "nombre": "1.5l",
+      "categoria": "bebidas",
+      "descripcion": "Bebida de 1.5 litros.",
+      "precio": 3500,
+      "disponible": true,
+      "alias": ["1.5", "1.5l", "litro y medio", "gaseosa 1.5", "bebida 1.5"]
+    }
+  ]
+}
