@@ -12,6 +12,7 @@ import { clearPaymentRecordsForTests } from "../payments/paymentRepository.js";
 import { clearLocalNotificationsForTests } from "../notifications/notificationRepository.js";
 import { clearSettingsForTests } from "./settingsRepository.js";
 import { clearProductAvailabilityForTests } from "../menu/stockRepository.js";
+import { clearRateLimitForTests } from "../security/rateLimiter.js";
 
 export function getOrCreateOrderSession(customerPhone) {
   if (!customerPhone) {
@@ -47,6 +48,7 @@ export function getAllSessions() {
 }
 
 export function resetSessionsForTests() {
+  clearRateLimitForTests();
   clearProductAvailabilityForTests();
   clearSettingsForTests();
   clearLocalNotificationsForTests();

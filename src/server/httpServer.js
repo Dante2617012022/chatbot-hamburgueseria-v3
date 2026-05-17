@@ -5,6 +5,7 @@ import {
   processMercadoPagoWebhook
 } from "../payments/paymentService.js";
 import { logger } from "../utils/logger.js";
+import { getDatabase } from "../storage/database.js";
 import { dispatchPendingLocalNotifications } from "../notifications/notificationDispatcher.js";
 
 export function createHttpServer() {
@@ -15,9 +16,22 @@ export function createHttpServer() {
   }));
 
   app.get("/health", (req, res) => {
+    let databaseOk = false;
+
+    try {
+      const db = getDatabase();
+      const row = db.prepare("SELECT 1 AS ok").get();
+      databaseOk = row?.ok === 1;
+    } catch {
+      databaseOk = false;
+    }
+
     res.json({
-      ok: true,
-      service: "chatbot-hamburgueseria-v3"
+      ok: databaseOk,
+      service: "chatbot-hamburgueseria-v3",
+      database: databaseOk ? "ok" : "error",
+      uptimeSeconds: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString()
     });
   });
 

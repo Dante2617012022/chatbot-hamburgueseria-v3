@@ -150,5 +150,28 @@ function runMigrations(database) {
 
     CREATE INDEX IF NOT EXISTS idx_product_availability_available
       ON product_availability(available);
+
+    CREATE TABLE IF NOT EXISTS rate_limit_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_phone TEXT NOT NULL,
+      created_at_ms INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_rate_limit_events_customer_phone
+      ON rate_limit_events(customer_phone);
+
+    CREATE INDEX IF NOT EXISTS idx_rate_limit_events_created_at_ms
+      ON rate_limit_events(created_at_ms);
+
+    CREATE TABLE IF NOT EXISTS customer_blocks (
+      customer_phone TEXT PRIMARY KEY,
+      blocked_until_ms INTEGER NOT NULL,
+      reason TEXT,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_customer_blocks_blocked_until_ms
+      ON customer_blocks(blocked_until_ms);
   `);
 }

@@ -16,6 +16,8 @@ import { createPaymentPreferenceForOrder } from "../payments/paymentService.js";
 import { createLocalNotificationForOrder, NOTIFICATION_TYPE } from "../notifications/notificationService.js";
 import { getBusinessAvailability } from "../business/businessHoursService.js";
 import { findDeliveryZoneByText } from "../delivery/deliveryZoneService.js";
+import { sanitizeMessageText } from "../security/inputSanitizer.js";
+import { checkRateLimit } from "../security/rateLimiter.js";
 import {
   clearOrderSession,
   getOrCreateOrderSession,
@@ -34,6 +36,16 @@ export async function handleCustomerMessage({
     throw new Error("customerPhone es obligatorio.");
   }
 
+  messageText = sanitizeMessageText(messageText);
+
+  if (!messageText) {
+    return {
+      parsedMessage: null,
+      order: null,
+      reply: "No recibí ningún mensaje. ¿Me podés escribir tu pedido?"
+    };
+  }
+
   if (isAdminCommand(messageText)) {
     const adminResult = await handleAdminCommand({
       customerPhone,
@@ -45,6 +57,19 @@ export async function handleCustomerMessage({
       order: null,
       reply: adminResult.reply,
       admin: adminResult
+    };
+  }
+
+  const rateLimit = checkRateLimit({
+    customerPhone
+  });
+
+  if (!rateLimit.allowed) {
+    return {
+      parsedMessage: null,
+      order: null,
+      rateLimit,
+      reply: buildRateLimitReply(rateLimit)
     };
   }
 
@@ -364,6 +389,17 @@ function buildProductNotClearReply(parsedMessage) {
   }
 
   return parsedMessage.replyHint || "No estoy seguro de qué producto querés.";
+}
+
+function buildRateLimitReply(rateLimit) {
+  const retryAfterSeconds = rateLimit.retryAfterSeconds || 60;
+  const minutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
+
+  return (
+    "Recibí demasiados mensajes seguidos. " +
+    `Por seguridad pausé la atención automática para este número por aproximadamente ${minutes} minuto(s). ` +
+    "Si necesitás ayuda urgente, escribí *humano* más tarde o esperá a que te respondan manualmente."
+  );
 }
 
 function buildMissingDataReply(errorMessage, order) {
