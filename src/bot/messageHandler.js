@@ -1,4 +1,5 @@
 import { parseCustomerMessage } from "../ai/intentParser.js";
+import { applyMessageCorrections } from "../ai/messageCorrections.js";
 import { parseCustomerMessageWithAiFallback, shouldUseAiFallback } from "../ai/aiFallbackParser.js";
 import { handleAdminCommand, isAdminCommand, shouldBlockCustomerMessages } from "../admin/adminCommands.js";
 import { CUSTOMER_INTENT } from "../ai/intentTypes.js";
@@ -105,6 +106,8 @@ export async function handleCustomerMessage({
       parsedMessage = aiParsedMessage;
     }
   }
+
+  parsedMessage = applyMessageCorrections(parsedMessage, messageText);
 
   saveMessageEvent({
     customerPhone,
