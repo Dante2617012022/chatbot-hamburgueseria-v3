@@ -29,3 +29,9 @@ sessions/
 
 # Coverage
 coverage/
+
+# SQLite WAL temporary files
+data/*.sqlite-shm
+data/*.sqlite-wal
+data/*.db-shm
+data/*.db-wal
