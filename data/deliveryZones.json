@@ -1,0 +1,45 @@
+{
+  "activo": true,
+  "deliverySinCosto": true,
+  "requiereZonaConocida": false,
+  "zonas": [
+    {
+      "id": "centro",
+      "nombre": "Centro",
+      "activo": true,
+      "alias": [
+        "centro",
+        "microcentro",
+        "avenida siempre viva",
+        "av siempre viva"
+      ]
+    },
+    {
+      "id": "barrio_norte",
+      "nombre": "Barrio Norte",
+      "activo": true,
+      "alias": [
+        "barrio norte",
+        "zona norte"
+      ]
+    },
+    {
+      "id": "barrio_sur",
+      "nombre": "Barrio Sur",
+      "activo": true,
+      "alias": [
+        "barrio sur",
+        "zona sur"
+      ]
+    },
+    {
+      "id": "yerba_buena",
+      "nombre": "Yerba Buena",
+      "activo": true,
+      "alias": [
+        "yerba buena",
+        "yb"
+      ]
+    }
+  ]
+}

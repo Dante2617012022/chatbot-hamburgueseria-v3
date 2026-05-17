@@ -9,6 +9,7 @@ import { getPendingLocalNotifications } from "../notifications/notificationRepos
 import { formatPrice } from "../menu/menuFormatter.js";
 import { BUSINESS_OPEN_OVERRIDE, formatBusinessAvailability, setBusinessOpenOverride } from "../business/businessHoursService.js";
 import { formatStockStatus, setProductAvailabilityByQuery } from "../menu/stockService.js";
+import { formatDeliveryZones } from "../delivery/deliveryZoneService.js";
 
 export function isAdminCommand(messageText) {
   return typeof messageText === "string" &&
@@ -51,6 +52,9 @@ export async function handleAdminCommand({
 
     case "stock":
       return adminReply(await formatStockStatus());
+
+    case "zonas":
+      return adminReply(await formatDeliveryZones());
 
     case "agotado":
       return adminReply(await handleStockChange(command.args, false));
@@ -141,6 +145,7 @@ function formatAdminHelp() {
     "/admin pedidos",
     "/admin notificaciones",
     "/admin stock",
+    "/admin zonas",
     "/admin agotado <producto>",
     "/admin disponible <producto>",
     "/admin horario",

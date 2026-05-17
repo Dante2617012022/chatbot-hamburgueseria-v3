@@ -14,6 +14,7 @@ import { formatOrderSummary } from "../orders/orderFormatter.js";
 import { createPaymentPreferenceForOrder } from "../payments/paymentService.js";
 import { createLocalNotificationForOrder, NOTIFICATION_TYPE } from "../notifications/notificationService.js";
 import { getBusinessAvailability } from "../business/businessHoursService.js";
+import { findDeliveryZoneByText } from "../delivery/deliveryZoneService.js";
 import {
   clearOrderSession,
   getOrCreateOrderSession,
@@ -223,30 +224,51 @@ function handleRemoveProduct({ customerPhone, order, parsedMessage }) {
   };
 }
 
-function handleChooseDelivery({ customerPhone, order, parsedMessage }) {
+async function handleChooseDelivery({ customerPhone, order, parsedMessage }) {
   const possibleAddress = parsedMessage.entities.possibleAddress;
 
   if (!possibleAddress) {
     return {
       parsedMessage,
       order,
-      reply: "Perfecto, sería con delivery. Pasame tu dirección, por favor."
+      reply: "Perfecto, sería con delivery. Pasame tu dirección, por favor. El delivery no tiene costo."
     };
   }
+
+  const zoneMatch = await findDeliveryZoneByText(possibleAddress);
+
+  if (!zoneMatch.ok && zoneMatch.requiresKnownZone) {
+    return {
+      parsedMessage,
+      order,
+      reply:
+        "Tenemos delivery sin costo, pero no pude reconocer si esa dirección está dentro de nuestra zona. " +
+        "Pasame el barrio o zona, por favor."
+    };
+  }
+
+  const deliveryZone = zoneMatch.zone?.nombre || null;
 
   setDeliveryData(order, {
     deliveryType: "DELIVERY",
     deliveryAddress: possibleAddress,
+    deliveryZone,
     deliveryCost: 0
   });
 
   saveOrderSession(customerPhone, order);
 
+  const zoneText = deliveryZone
+    ? `\nZona: *${deliveryZone}*`
+    : "\nNo pude detectar la zona automáticamente, pero el delivery queda sin costo.";
+
   return {
     parsedMessage,
     order,
     reply:
-      `Perfecto, envío a: *${possibleAddress}*.\n\n` +
+      `Perfecto, envío a: *${possibleAddress}*.` +
+      zoneText +
+      "\nDelivery: *sin costo*.\n\n" +
       formatOrderSummary(order)
   };
 }

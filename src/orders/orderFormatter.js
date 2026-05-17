@@ -42,6 +42,10 @@ export function formatOrderSummary(order) {
     lines.push(`Dirección: ${order.deliveryAddress}`);
   }
 
+  if (order.deliveryZone) {
+    lines.push(`Zona: ${order.deliveryZone}`);
+  }
+
   if (order.paymentMethod) {
     lines.push(`Pago: ${formatPaymentMethod(order.paymentMethod)}`);
   }
@@ -88,6 +92,10 @@ export function formatOrderForBusiness(order) {
 
   if (order.deliveryAddress) {
     lines.push(`Dirección: ${order.deliveryAddress}`);
+  }
+
+  if (order.deliveryZone) {
+    lines.push(`Zona: ${order.deliveryZone}`);
   }
 
   if (order.paymentMethod) {

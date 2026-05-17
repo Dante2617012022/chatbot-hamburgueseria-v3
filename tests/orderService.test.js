@@ -108,7 +108,7 @@ test("updateItemQuantity cambia cantidad y total", async () => {
   assert.equal(order.total, 10500);
 });
 
-test("setDeliveryData suma costo de delivery", async () => {
+test("setDeliveryData deja delivery sin costo", async () => {
   const order = createEmptyOrder();
 
   await addProductToOrder(order, "cheeseburger_simple", { quantity: 1 });
@@ -119,7 +119,8 @@ test("setDeliveryData suma costo de delivery", async () => {
   });
 
   assert.equal(order.deliveryType, "DELIVERY");
-  assert.equal(order.total, 9000);
+  assert.equal(order.deliveryCost, 0);
+  assert.equal(order.total, 8000);
 });
 
 test("confirmOrder deja el pedido esperando pago si es Mercado Pago", async () => {

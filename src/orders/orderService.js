@@ -19,6 +19,7 @@ export function createEmptyOrder({ customerPhone = null } = {}) {
 
     deliveryType: null,
     deliveryAddress: null,
+    deliveryZone: null,
     deliveryCost: 0,
 
     paymentMethod: null,
@@ -180,6 +181,7 @@ export function setDeliveryData(
   {
     deliveryType,
     deliveryAddress = null,
+    deliveryZone = null,
     deliveryCost = 0
   } = {}
 ) {
@@ -195,7 +197,8 @@ export function setDeliveryData(
 
   order.deliveryType = deliveryType;
   order.deliveryAddress = deliveryAddress;
-  order.deliveryCost = deliveryType === "DELIVERY" ? deliveryCost : 0;
+  order.deliveryZone = deliveryType === "DELIVERY" ? deliveryZone : null;
+  order.deliveryCost = 0;
 
   recalculateOrder(order);
   touchOrder(order);
