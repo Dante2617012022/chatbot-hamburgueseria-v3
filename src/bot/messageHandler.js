@@ -1,5 +1,6 @@
 import { parseCustomerMessage } from "../ai/intentParser.js";
 import { applyMessageCorrections } from "../ai/messageCorrections.js";
+import { parseMultiProductMessage } from "../ai/multiProductParser.js";
 import { parseCustomerMessageWithAiFallback, shouldUseAiFallback } from "../ai/aiFallbackParser.js";
 import { handleAdminCommand, isAdminCommand, shouldBlockCustomerMessages } from "../admin/adminCommands.js";
 import { CUSTOMER_INTENT } from "../ai/intentTypes.js";
@@ -95,6 +96,52 @@ export async function handleCustomerMessage({
   }
 
   const order = getOrCreateOrderSession(customerPhone);
+
+  const multiProductMessage = await parseMultiProductMessage(messageText);
+
+  if (multiProductMessage.ok) {
+    for (const item of multiProductMessage.items) {
+      await addProductToOrder(order, item.product.id, {
+        quantity: item.quantity
+      });
+    }
+
+    saveOrderSession(customerPhone, order);
+
+    const parsedMessage = {
+      rawText: messageText,
+      normalizedText: messageText,
+      intent: "AGREGAR_PRODUCTOS_MULTIPLES",
+      confidence: 0.9,
+      status: multiProductMessage.status,
+      entities: {
+        items: multiProductMessage.items
+      },
+      replyHint: null
+    };
+
+    saveMessageEvent({
+      customerPhone,
+      direction: "IN",
+      text: messageText,
+      intent: parsedMessage.intent,
+      status: parsedMessage.status,
+      payload: parsedMessage
+    });
+
+    return {
+      parsedMessage,
+      order,
+      reply:
+        "Agregué a tu pedido:\n" +
+        multiProductMessage.items
+          .map((item) => `- ${item.quantity} x ${item.product.nombre}`)
+          .join("\n") +
+        "\n\n" +
+        formatOrderSummary(order)
+    };
+  }
+
   let parsedMessage = await parseCustomerMessage(messageText);
 
   if (shouldUseAiFallback(parsedMessage)) {
