@@ -13,6 +13,7 @@ import {
 import { formatOrderSummary } from "../orders/orderFormatter.js";
 import { createPaymentPreferenceForOrder } from "../payments/paymentService.js";
 import { createLocalNotificationForOrder, NOTIFICATION_TYPE } from "../notifications/notificationService.js";
+import { getBusinessAvailability } from "../business/businessHoursService.js";
 import {
   clearOrderSession,
   getOrCreateOrderSession,
@@ -50,6 +51,18 @@ export async function handleCustomerMessage({
       parsedMessage: null,
       order: null,
       reply: "En este momento el bot está pausado. Te responderemos manualmente a la brevedad."
+    };
+  }
+
+  const availability = await getBusinessAvailability();
+
+  if (!availability.isOpen && !availability.acceptsScheduledOrders) {
+    return {
+      parsedMessage: null,
+      order: null,
+      reply:
+        "Ahora el local está cerrado. " +
+        "Cuando estemos abiertos voy a poder tomar tu pedido automáticamente."
     };
   }
 

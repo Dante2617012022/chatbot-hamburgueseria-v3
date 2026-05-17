@@ -7,6 +7,7 @@ import {
 } from "../storage/settingsRepository.js";
 import { getPendingLocalNotifications } from "../notifications/notificationRepository.js";
 import { formatPrice } from "../menu/menuFormatter.js";
+import { BUSINESS_OPEN_OVERRIDE, formatBusinessAvailability, setBusinessOpenOverride } from "../business/businessHoursService.js";
 
 export function isAdminCommand(messageText) {
   return typeof messageText === "string" &&
@@ -46,6 +47,22 @@ export async function handleAdminCommand({
 
     case "pedidos":
       return adminReply(formatActiveOrders());
+
+    case "horario":
+      return adminReply(await formatBusinessAvailability());
+
+    case "abrir":
+      setBusinessOpenOverride(BUSINESS_OPEN_OVERRIDE.OPEN);
+      return adminReply("Local marcado como *ABIERTO* manualmente.");
+
+    case "cerrar":
+      setBusinessOpenOverride(BUSINESS_OPEN_OVERRIDE.CLOSED);
+      return adminReply("Local marcado como *CERRADO* manualmente.");
+
+    case "automatico":
+    case "auto":
+      setBusinessOpenOverride(BUSINESS_OPEN_OVERRIDE.AUTO);
+      return adminReply("Horario del local vuelto a modo *AUTOMÁTICO*.");
 
     case "pendientes":
     case "notificaciones":
@@ -89,6 +106,10 @@ function formatAdminHelp() {
     "/admin estado",
     "/admin pedidos",
     "/admin notificaciones",
+    "/admin horario",
+    "/admin abrir",
+    "/admin cerrar",
+    "/admin automatico",
     "/admin pausar",
     "/admin activar"
   ].join("\n");
