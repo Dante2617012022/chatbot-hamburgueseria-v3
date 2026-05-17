@@ -70,6 +70,24 @@ export function getActiveOrderByPhone(customerPhone) {
   return JSON.parse(row.order_json);
 }
 
+export function getActiveOrderByOrderId(orderId) {
+  if (!orderId) {
+    return null;
+  }
+
+  const db = getDatabase();
+
+  const row = db
+    .prepare("SELECT order_json FROM active_orders WHERE order_id = ?")
+    .get(orderId);
+
+  if (!row) {
+    return null;
+  }
+
+  return JSON.parse(row.order_json);
+}
+
 export function deleteActiveOrderByPhone(customerPhone) {
   if (!customerPhone) {
     return;

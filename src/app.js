@@ -1,5 +1,6 @@
 import { loadEnv } from "./config/env.js";
 import { startWhatsAppBot } from "./bot/whatsapp.js";
+import { startHttpServer } from "./server/httpServer.js";
 import { initDatabase } from "./storage/database.js";
 import { logger } from "./utils/logger.js";
 
@@ -9,6 +10,8 @@ export async function startApp() {
 
   logger.info("Chatbot Hamburgueseria V3 iniciado correctamente.");
   logger.info("Base de datos SQLite inicializada.");
+
+  startHttpServer();
 
   const enableWhatsApp = process.env.ENABLE_WHATSAPP === "true";
 

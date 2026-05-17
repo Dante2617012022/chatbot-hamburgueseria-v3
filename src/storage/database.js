@@ -70,6 +70,9 @@ function runMigrations(database) {
       created_at TEXT NOT NULL
     );
 
+    CREATE INDEX IF NOT EXISTS idx_active_orders_order_id
+      ON active_orders(order_id);
+
     CREATE INDEX IF NOT EXISTS idx_message_events_customer_phone
       ON message_events(customer_phone);
 

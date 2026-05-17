@@ -1,7 +1,16 @@
-import { createMercadoPagoPreference } from "./mercadoPagoClient.js";
+import { markAsPaid } from "../orders/orderService.js";
+import {
+  getActiveOrderByOrderId,
+  saveActiveOrder
+} from "../storage/orderRepository.js";
+import {
+  createMercadoPagoPreference,
+  getMercadoPagoPayment
+} from "./mercadoPagoClient.js";
 import {
   getPaymentRecordByOrderId,
-  savePaymentRecord
+  savePaymentRecord,
+  updatePaymentStatusByOrderId
 } from "./paymentRepository.js";
 
 export async function createPaymentPreferenceForOrder(
@@ -74,6 +83,123 @@ export async function createPaymentPreferenceForOrder(
   };
 }
 
+export function approveDryRunPaymentByOrderId(orderId) {
+  if (!orderId) {
+    throw new Error("orderId es obligatorio.");
+  }
+
+  const payment = getPaymentRecordByOrderId(orderId);
+
+  if (!payment) {
+    throw new Error(`No existe pago para el pedido ${orderId}.`);
+  }
+
+  if (payment.provider !== "MERCADO_PAGO") {
+    throw new Error(`Proveedor de pago no soportado: ${payment.provider}`);
+  }
+
+  const updatedPayment = updatePaymentStatusByOrderId({
+    orderId,
+    status: "APPROVED",
+    paymentId: payment.paymentId || `dry_run_payment_${orderId}`,
+    raw: {
+      ...(payment.raw || {}),
+      dryRunApprovedAt: new Date().toISOString()
+    }
+  });
+
+  const order = getActiveOrderByOrderId(orderId);
+
+  if (!order) {
+    return {
+      payment: updatedPayment,
+      order: null,
+      orderUpdated: false
+    };
+  }
+
+  markAsPaid(order);
+  saveActiveOrder(order.customerPhone, order);
+
+  return {
+    payment: updatedPayment,
+    order,
+    orderUpdated: true
+  };
+}
+
+export async function processMercadoPagoWebhook({
+  query = {},
+  body = {}
+} = {}) {
+  const paymentId = extractPaymentIdFromWebhook({ query, body });
+
+  if (!paymentId) {
+    return {
+      processed: false,
+      reason: "PAYMENT_ID_NOT_FOUND"
+    };
+  }
+
+  const isDryRun =
+    process.env.MERCADOPAGO_DRY_RUN === "true" ||
+    !process.env.MERCADOPAGO_ACCESS_TOKEN;
+
+  if (isDryRun) {
+    return {
+      processed: false,
+      reason: "DRY_RUN_MODE_DOES_NOT_QUERY_MERCADO_PAGO",
+      paymentId
+    };
+  }
+
+  const paymentInfo = await getMercadoPagoPayment(paymentId);
+
+  const orderId = extractOrderIdFromExternalReference(
+    paymentInfo.external_reference
+  );
+
+  if (!orderId) {
+    return {
+      processed: false,
+      reason: "ORDER_ID_NOT_FOUND_IN_EXTERNAL_REFERENCE",
+      paymentId,
+      paymentInfo
+    };
+  }
+
+  const normalizedStatus = normalizeMercadoPagoStatus(paymentInfo.status);
+
+  const updatedPayment = updatePaymentStatusByOrderId({
+    orderId,
+    status: normalizedStatus,
+    paymentId: String(paymentId),
+    raw: paymentInfo
+  });
+
+  let order = null;
+  let orderUpdated = false;
+
+  if (normalizedStatus === "APPROVED") {
+    order = getActiveOrderByOrderId(orderId);
+
+    if (order) {
+      markAsPaid(order);
+      saveActiveOrder(order.customerPhone, order);
+      orderUpdated = true;
+    }
+  }
+
+  return {
+    processed: true,
+    paymentId,
+    status: normalizedStatus,
+    payment: updatedPayment,
+    order,
+    orderUpdated
+  };
+}
+
 function createDryRunPayment(order) {
   const externalReference = buildExternalReference(order);
   const preferenceId = `dry_run_${order.id}`;
@@ -140,6 +266,45 @@ function buildPreferenceItems(order) {
 
 function buildExternalReference(order) {
   return `order:${order.id}`;
+}
+
+function extractOrderIdFromExternalReference(externalReference) {
+  if (!externalReference || typeof externalReference !== "string") {
+    return null;
+  }
+
+  if (!externalReference.startsWith("order:")) {
+    return null;
+  }
+
+  return externalReference.replace("order:", "");
+}
+
+function extractPaymentIdFromWebhook({ query, body }) {
+  return (
+    body?.data?.id ||
+    body?.id ||
+    query?.["data.id"] ||
+    query?.id ||
+    query?.payment_id ||
+    null
+  );
+}
+
+function normalizeMercadoPagoStatus(status) {
+  const normalized = String(status || "").toLowerCase();
+
+  const map = {
+    approved: "APPROVED",
+    pending: "PENDING",
+    in_process: "IN_PROCESS",
+    rejected: "REJECTED",
+    cancelled: "CANCELLED",
+    refunded: "REFUNDED",
+    charged_back: "CHARGED_BACK"
+  };
+
+  return map[normalized] || normalized.toUpperCase() || "UNKNOWN";
 }
 
 function buildBackUrls() {
