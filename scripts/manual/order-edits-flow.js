@@ -1,5 +1,5 @@
-import { handleCustomerMessage } from "../src/bot/messageHandler.js";
-import { resetSessionsForTests } from "../src/storage/sessionStore.js";
+import { handleCustomerMessage } from "../../src/bot/messageHandler.js";
+import { resetSessionsForTests } from "../../src/storage/sessionStore.js";
 
 process.env.RATE_LIMIT_ENABLED = "false";
 process.env.MERCADOPAGO_DRY_RUN = "true";

@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "node --test --test-concurrency=1",
+    "test": "node --test --test-concurrency=1 tests/*.test.js",
     "dev": "node --watch index.js",
     "start": "node index.js",
     "health": "curl http://localhost:3000/health",
@@ -17,7 +17,9 @@
     "pm2:restart": "pm2 restart chatbot-hamburgueseria-v3",
     "pm2:logs": "pm2 logs chatbot-hamburgueseria-v3",
     "pm2:status": "pm2 status",
-    "pm2:save": "pm2 save"
+    "pm2:save": "pm2 save",
+    "test:orders": "node scripts/manual/orders-10-flow.js",
+    "test:edits": "node scripts/manual/order-edits-flow.js"
   },
   "keywords": [],
   "author": "",
