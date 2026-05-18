@@ -99,7 +99,7 @@ function shouldTryMultiProduct(normalizedText) {
   const cleanedText = removeOrderIntro(normalizedText);
 
   const hasAddVerb =
-    /\b(voy a querer|quiero encargar|quiero|quisiera|dame|agregame|agrega|sumame|suma|mandame|pone|poneme|necesito|preparame|prepárame)\b/.test(
+    /\b(voy a querer|quiero encargar|quiero|quisiera|dame|agregame|agrega|sumame|suma|mandame|pone|poneme|necesito|preparame|prepárame|me haces|me hacés|me hacen|haceme|hacéme)\b/.test(
       normalizedText
     );
 
@@ -136,7 +136,12 @@ function isNaturalSingleProductOrder(normalizedText) {
     normalizedText.startsWith("preparame ") ||
     normalizedText.startsWith("prepárame ") ||
     normalizedText.startsWith("me preparas ") ||
-    normalizedText.startsWith("me preparás ")
+    normalizedText.startsWith("me preparás ") ||
+    normalizedText.startsWith("me haces ") ||
+    normalizedText.startsWith("me hacés ") ||
+    normalizedText.startsWith("me hacen ") ||
+    normalizedText.startsWith("haceme ") ||
+    normalizedText.startsWith("hacéme ")
   );
 }
 
@@ -190,7 +195,7 @@ function removeOrderIntro(text) {
     /^(voy a querer que me preparen|voy a querer que preparen)\s+/,
     /^(quiero encargar|quiero pedir|quiero que me preparen)\s+/,
     /^(voy a querer|quiero|quisiera|dame|agregame|agrega|sumame|suma|mandame|pone|poneme|necesito)\s+/,
-    /^(que me preparen|que preparen|preparame|prepárame|me preparas|me preparás|me hacen|hacerme|encargar)\s+/
+    /^(que me preparen|que preparen|preparame|prepárame|me preparas|me preparás|me haces|me hacés|me hacen|haceme|hacéme|hacerme|encargar)\s+/
   ];
 
   let changed = true;

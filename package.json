@@ -19,7 +19,8 @@
     "pm2:status": "pm2 status",
     "pm2:save": "pm2 save",
     "test:orders": "node scripts/manual/orders-10-flow.js",
-    "test:edits": "node scripts/manual/order-edits-flow.js"
+    "test:edits": "node scripts/manual/order-edits-flow.js",
+    "test:phrases": "node scripts/manual/real-customer-phrases.js"
   },
   "keywords": [],
   "author": "",

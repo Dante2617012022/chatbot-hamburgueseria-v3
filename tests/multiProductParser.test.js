@@ -91,3 +91,17 @@ test("handleCustomerMessage agrega americanas dobles y papas desde frase natural
   assert.match(result.reply, /2 x Americana 2.0 doble/);
   assert.match(result.reply, /1 x Papas clasicas/);
 });
+
+test("handleCustomerMessage detecta me haces una doble con bacon", async () => {
+  resetSessionsForTests();
+  process.env.RATE_LIMIT_ENABLED = "false";
+
+  const result = await handleCustomerMessage({
+    customerPhone: "3819999999",
+    messageText: "me haces una doble con bacon"
+  });
+
+  assert.equal(result.order.items.length, 1);
+  assert.equal(result.order.items[0].name, "Bacon cheese doble");
+  assert.equal(result.order.total, 10000);
+});
