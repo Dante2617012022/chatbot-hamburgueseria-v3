@@ -28,8 +28,9 @@ export async function parseMultiProductMessage(messageText) {
   }
 
   const productRequests = extractProductRequests(normalizedText);
+  const allowSingleItem = isNaturalSingleProductOrder(normalizedText);
 
-  if (productRequests.length < 2) {
+  if (productRequests.length < 2 && !allowSingleItem) {
     return {
       ok: false,
       status: "NOT_ENOUGH_ITEMS",
@@ -59,7 +60,7 @@ export async function parseMultiProductMessage(messageText) {
     });
   }
 
-  if (items.length < 2) {
+  if (items.length < 2 && !allowSingleItem) {
     return {
       ok: false,
       status: "MULTI_PRODUCT_LOW_CONFIDENCE",
@@ -68,9 +69,23 @@ export async function parseMultiProductMessage(messageText) {
     };
   }
 
+  if (items.length < 1) {
+    return {
+      ok: false,
+      status: "PRODUCT_NOT_FOUND",
+      items,
+      failedItems
+    };
+  }
+
   return {
     ok: true,
-    status: failedItems.length > 0 ? "PARTIAL_MATCH" : "AUTO_MATCH",
+    status:
+      items.length === 1
+        ? "SINGLE_NATURAL_MATCH"
+        : failedItems.length > 0
+          ? "PARTIAL_MATCH"
+          : "AUTO_MATCH",
     items,
     failedItems
   };
@@ -81,22 +96,48 @@ function shouldTryMultiProduct(normalizedText) {
     return false;
   }
 
+  const cleanedText = removeOrderIntro(normalizedText);
+
   const hasAddVerb =
-    /\b(quiero|dame|agregame|agrega|sumame|suma|mandame|pone|poneme|necesito)\b/.test(
+    /\b(voy a querer|quiero encargar|quiero|quisiera|dame|agregame|agrega|sumame|suma|mandame|pone|poneme|necesito|preparame|prepárame)\b/.test(
       normalizedText
     );
 
   const hasConnector =
-    normalizedText.includes(" y ") ||
-    normalizedText.includes(",") ||
-    normalizedText.includes(" mas ");
+    cleanedText.includes(" y ") ||
+    cleanedText.includes(",") ||
+    cleanedText.includes(" mas ");
 
   const hasSpecialTwoDoubles =
-    normalizedText.includes("dos dobles") &&
-    normalizedText.includes("bacon") &&
-    normalizedText.includes("cheese");
+    cleanedText.includes("dos dobles") &&
+    cleanedText.includes("bacon") &&
+    cleanedText.includes("cheese");
 
-  return (hasAddVerb && hasConnector) || hasSpecialTwoDoubles;
+  const looksLikeNaturalOrder =
+    normalizedText.startsWith("voy a querer") ||
+    normalizedText.startsWith("quiero encargar") ||
+    normalizedText.startsWith("me preparas") ||
+    normalizedText.startsWith("me preparás") ||
+    normalizedText.startsWith("preparame") ||
+    normalizedText.startsWith("prepárame");
+
+  return (
+    (hasAddVerb && hasConnector) ||
+    (looksLikeNaturalOrder && hasConnector) ||
+    hasSpecialTwoDoubles ||
+    isNaturalSingleProductOrder(normalizedText)
+  );
+}
+
+function isNaturalSingleProductOrder(normalizedText) {
+  return (
+    normalizedText.startsWith("quiero encargar ") ||
+    normalizedText.startsWith("voy a querer ") ||
+    normalizedText.startsWith("preparame ") ||
+    normalizedText.startsWith("prepárame ") ||
+    normalizedText.startsWith("me preparas ") ||
+    normalizedText.startsWith("me preparás ")
+  );
 }
 
 function extractProductRequests(normalizedText) {
@@ -106,8 +147,7 @@ function extractProductRequests(normalizedText) {
     return special;
   }
 
-  let text = normalizedText
-    .replace(/^(quiero|dame|agregame|agrega|sumame|suma|mandame|pone|poneme|necesito)\s+/, "")
+  let text = removeOrderIntro(normalizedText)
     .replace(/\bmas\b/g, " y ");
 
   text = protectInternalConnectors(text);
@@ -141,6 +181,32 @@ function extractSpecialTwoDoubles(normalizedText) {
   }
 
   return [];
+}
+
+function removeOrderIntro(text) {
+  let cleaned = String(text || "").trim();
+
+  const patterns = [
+    /^(voy a querer que me preparen|voy a querer que preparen)\s+/,
+    /^(quiero encargar|quiero pedir|quiero que me preparen)\s+/,
+    /^(voy a querer|quiero|quisiera|dame|agregame|agrega|sumame|suma|mandame|pone|poneme|necesito)\s+/,
+    /^(que me preparen|que preparen|preparame|prepárame|me preparas|me preparás|me hacen|hacerme|encargar)\s+/
+  ];
+
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+
+    for (const pattern of patterns) {
+      if (pattern.test(cleaned)) {
+        cleaned = cleaned.replace(pattern, "").trim();
+        changed = true;
+      }
+    }
+  }
+
+  return cleaned;
 }
 
 function parseProductPart(part) {

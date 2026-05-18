@@ -60,3 +60,34 @@ test("handleCustomerMessage agrega dos dobles una bacon y una cheese", async () 
   assert.match(result.reply, /Bacon cheese doble/);
   assert.match(result.reply, /Cheeseburger doble/);
 });
+
+test("parseMultiProductMessage detecta frase natural con americanas dobles y papas", async () => {
+  resetSessionsForTests();
+
+  const result = await parseMultiProductMessage(
+    "voy a querer que me preparen dos americanas dobles y una papas clasicas"
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.items.length, 2);
+  assert.equal(result.items[0].quantity, 2);
+  assert.equal(result.items[0].product.nombre, "Americana 2.0 doble");
+  assert.equal(result.items[1].quantity, 1);
+  assert.equal(result.items[1].product.id, "papas_clasicas");
+});
+
+test("handleCustomerMessage agrega americanas dobles y papas desde frase natural", async () => {
+  resetSessionsForTests();
+  process.env.RATE_LIMIT_ENABLED = "false";
+
+  const result = await handleCustomerMessage({
+    customerPhone: "3819999999",
+    messageText: "voy a querer que me preparen dos americanas dobles y una papas clasicas"
+  });
+
+  assert.equal(result.parsedMessage.intent, "AGREGAR_PRODUCTOS_MULTIPLES");
+  assert.equal(result.order.items.length, 2);
+  assert.equal(result.order.total, 26000);
+  assert.match(result.reply, /2 x Americana 2.0 doble/);
+  assert.match(result.reply, /1 x Papas clasicas/);
+});

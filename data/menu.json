@@ -169,7 +169,8 @@
       "alias": [
         "americana simple",
         "americana 2 simple",
-        "americana 2.0 simple"
+        "americana 2.0 simple",
+        "americanas simple"
       ]
     },
     {
@@ -182,7 +183,13 @@
       "alias": [
         "americana doble",
         "americana 2 doble",
-        "americana 2.0 doble"
+        "americana 2.0 doble",
+        "americanas doble",
+        "americanas dobles",
+        "americana dobles",
+        "doble americana",
+        "dobles americanas",
+        "dos americanas dobles"
       ]
     },
     {
@@ -195,7 +202,9 @@
       "alias": [
         "americana triple",
         "americana 2 triple",
-        "americana 2.0 triple"
+        "americana 2.0 triple",
+        "americanas triple",
+        "triple americana"
       ]
     },
     {
