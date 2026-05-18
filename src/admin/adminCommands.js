@@ -10,6 +10,11 @@ import { formatPrice } from "../menu/menuFormatter.js";
 import { BUSINESS_OPEN_OVERRIDE, formatBusinessAvailability, setBusinessOpenOverride } from "../business/businessHoursService.js";
 import { formatStockStatus, setProductAvailabilityByQuery } from "../menu/stockService.js";
 import { formatDeliveryZones } from "../delivery/deliveryZoneService.js";
+import {
+  ADMIN_ORDER_STATUS_ACTIONS,
+  formatOrderStatusLabel,
+  updateActiveOrderStatus
+} from "../orders/orderWorkflowService.js";
 
 export function isAdminCommand(messageText) {
   return typeof messageText === "string" &&
@@ -82,6 +87,12 @@ export async function handleAdminCommand({
     case "notificaciones":
       return adminReply(formatPendingNotifications());
 
+    case "preparar":
+    case "listo":
+    case "camino":
+    case "entregado":
+      return adminReply(handleOrderStatusChange(command));
+
     default:
       return adminReply(
         `Comando admin no reconocido: ${command.name}\n\n${formatAdminHelp()}`
@@ -153,7 +164,11 @@ function formatAdminHelp() {
     "/admin cerrar",
     "/admin automatico",
     "/admin pausar",
-    "/admin activar"
+    "/admin activar",
+    "/admin preparar <idPedido>",
+    "/admin listo <idPedido>",
+    "/admin camino <idPedido>",
+    "/admin entregado <idPedido>"
   ].join("\n");
 }
 
@@ -221,4 +236,63 @@ function formatPendingNotifications() {
   }
 
   return lines.join("\n").trim();
+}
+
+function handleOrderStatusChange(command) {
+  const targetStatus = ADMIN_ORDER_STATUS_ACTIONS[command.name];
+  const orderId = command.args[0];
+
+  if (!targetStatus) {
+    return "Acción de estado no reconocida.";
+  }
+
+  if (!orderId) {
+    return (
+      `Indicá el ID del pedido. Ejemplo: /admin ${command.name} <idPedido>\n\n` +
+      "Podés ver los pedidos activos con /admin pedidos."
+    );
+  }
+
+  const result = updateActiveOrderStatus({
+    orderId,
+    status: targetStatus,
+    note: `Cambio manual por admin: /admin ${command.name}`
+  });
+
+  if (result.status === "ORDER_NOT_FOUND") {
+    return (
+      `No encontré ningún pedido activo con ID o prefijo: ${orderId}\n\n` +
+      "Usá /admin pedidos para ver los pedidos activos."
+    );
+  }
+
+  if (result.status === "MULTIPLE_ORDERS_FOUND") {
+    return (
+      `Encontré varios pedidos que empiezan con: ${orderId}\n\n` +
+      result.matches
+        .slice(0, 5)
+        .map((order) =>
+          `- ${formatShortOrderId(order.id)} | ${formatOrderStatusLabel(order.status)} | $${formatPrice(order.total || 0)}`
+        )
+        .join("\n") +
+      "\n\nEscribí más caracteres del ID para identificar uno solo."
+    );
+  }
+
+  if (!result.ok) {
+    return `No pude actualizar el pedido. Estado: ${result.status}`;
+  }
+
+  return [
+    "*Pedido actualizado*",
+    "",
+    `ID: ${formatShortOrderId(result.order.id)}`,
+    `Estado anterior: ${formatOrderStatusLabel(result.previousStatus)}`,
+    `Estado nuevo: ${formatOrderStatusLabel(result.newStatus)}`,
+    `Total: $${formatPrice(result.order.total || 0)}`
+  ].join("\n");
+}
+
+function formatShortOrderId(orderId) {
+  return String(orderId || "").slice(0, 8);
 }
