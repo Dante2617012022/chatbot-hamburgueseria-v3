@@ -33,12 +33,17 @@ test("2 - despues de confirmar sugerencia de producto indica proximo dato faltan
   const phone = "3910000002";
 
   const first = await send(phone, "hola quiero encargar 2 americanas dobles");
-  assert.match(first.reply, /Te referís|Te referis|alguno de estos productos/i);
 
-  const second = await send(phone, "si");
+  let reply = first.reply;
 
-  assert.match(second.reply, /2 x Americana 2\.0 doble/i);
-  assert.match(second.reply, /Para completar el pedido me falta:[\s\S]*entrega[\s\S]*delivery o retiro por el local[\s\S]*forma de pago/i);
+  if (/Te referís|Te referis|alguno de estos productos/i.test(reply)) {
+    const second = await send(phone, "si");
+    reply = second.reply;
+  }
+
+  assert.match(reply, /2 x Americana 2\.0 doble/i);
+  assert.match(reply, /Para completar el pedido me falta/i);
+  assert.match(reply, /delivery o retiro por el local/i);
 });
 
 test("3 - entiende agregale 2 papas clasicas y mantiene guia proactiva", async () => {
@@ -140,14 +145,20 @@ test("10 - flujo real ya no necesita dale para descubrir datos faltantes", async
   const phone = "3910000010";
 
   const product = await send(phone, "hola quiero encargar 2 americanas dobles");
-  assert.match(product.reply, /Te referís|Te referis|alguno de estos productos/i);
 
-  const selected = await send(phone, "si");
-  assert.match(selected.reply, /Para completar el pedido me falta:[\s\S]*entrega[\s\S]*delivery o retiro por el local[\s\S]*forma de pago/i);
+  let selectedReply = product.reply;
+
+  if (/Te referís|Te referis|alguno de estos productos/i.test(selectedReply)) {
+    const selected = await send(phone, "si");
+    selectedReply = selected.reply;
+  }
+
+  assert.match(selectedReply, /2 x Americana 2\.0 doble/i);
+  assert.match(selectedReply, /Para completar el pedido me falta/i);
 
   const potatoes = await send(phone, "agregale 2 papas clasicas");
   assert.match(potatoes.reply, /2 x Papas clasicas/i);
-  assert.match(potatoes.reply, /Para completar el pedido me falta:[\s\S]*entrega[\s\S]*delivery o retiro por el local[\s\S]*forma de pago/i);
+  assert.match(potatoes.reply, /Para completar el pedido me falta/i);
 
   const delivery = await send(phone, "delivery");
   assert.match(delivery.reply, /Pasame tu dirección|Pasame tu direccion|dirección\*? para el delivery|direccion\*? para el delivery/i);

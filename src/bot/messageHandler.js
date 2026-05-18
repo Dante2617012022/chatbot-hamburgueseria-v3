@@ -1031,6 +1031,19 @@ function detectCombinedDeliveryData(messageText) {
   return null;
 }
 
+function looksLikeFalseAddressCandidate(value) {
+  const text = normalizeCombinedText(value);
+
+  if (!text) {
+    return true;
+  }
+
+  return (
+    /^(querer|pedir|necesitar|encargar)\b/.test(text) ||
+    /\b(crispy|bacon|cheese|americana|americanas|cuarto|araka|onion|big|camdis|papas|nuggets|coca|pepsi|sprite|gaseosa|bebida|lata|latas)\b/.test(text)
+  );
+}
+
 function extractCombinedDeliveryAddress(messageText) {
   const text = normalizeCombinedText(messageText);
 
@@ -1048,11 +1061,22 @@ function extractCombinedDeliveryAddress(messageText) {
     const match = text.match(pattern);
 
     if (match?.[1]) {
-      return cleanCombinedTail(match[1]);
+      const candidate = cleanDeliveryAddressValue(match[1]);
+
+      if (looksLikeFalseAddressCandidate(candidate)) {
+        continue;
+      }
+
+      return candidate;
     }
   }
 
   return null;
+}
+
+function looksLikeProductOrderText(text) {
+  return /\b(quiero|voy|querer|pedir|preparame|encargar|encargo|necesito|mandame|dame)\b/.test(text) &&
+    /\b(crispy|bacon|cheese|americana|americanas|cuarto|araka|onion|big|camdis|papas|nuggets|coca|pepsi|sprite|gaseosa|bebida|lata|latas)\b/.test(text);
 }
 
 function extractStandaloneAddressFromCombinedMessage(messageText) {
@@ -1071,6 +1095,10 @@ function extractStandaloneAddressFromCombinedMessage(messageText) {
   if (
     /\b(retiro|retirar|local|buscar|confirmo|cancelar|menu|menú)\b/.test(text)
   ) {
+    return null;
+  }
+
+  if (looksLikeProductOrderText(text)) {
     return null;
   }
 
@@ -1140,7 +1168,7 @@ function looksLikeCombinedProductText(productText) {
   }
 
   return (
-    /\b(quiero|mandame|dame|agregame|sumame|mejor|cambiala|cambialo|una|un|dos|tres|coca|gaseosa|bebida|lata|papas|nuggets|cheese|bacon|big|cuarto|americana|americanas|araka|onion|crispy|camdis)\b/.test(text)
+    /\b(quiero|voy|querer|pedir|mandame|dame|agregame|sumame|mejor|cambiala|cambialo|una|un|dos|tres|coca|pepsi|sprite|gaseosa|bebida|lata|latas|papas|nuggets|cheese|bacon|big|cuarto|americana|americanas|araka|onion|crispy|camdis)\b/.test(text)
   );
 }
 
@@ -1856,7 +1884,7 @@ function normalizeCommonCustomerTypos(messageText) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[¡!¿?]/g, " ")
-    .replace(/\b(hola|buenas|buenos dias|buen dia|buenas tardes|buenas noches)\s+(te\s+voy\s+a\s+pedir|te\s+quiero\s+pedir|voy\s+a\s+pedir|quiero\s+pedir|te\s+puedo\s+encargar|te\s+encargo|preparame|me\s+preparas|voy\s+a\s+necesitar|necesito|quiero)\b/g, "$2")
+    .replace(/\b(hola|buenas|buenos dias|buen dia|buenas tardes|buenas noches)\s+(te\s+voy\s+a\s+pedir|te\s+quiero\s+pedir|voy\s+a\s+pedir|quiero\s+pedir|voy\s+a\s+querer|te\s+voy\s+a\s+querer|te\s+voy\s+a\s+querer\s+pedir|te\s+puedo\s+encargar|te\s+encargo|preparame|me\s+preparas|voy\s+a\s+necesitar|necesito|quiero)\b/g, "$2")
     .replace(/\bkiero\b/g, "quiero")
     .replace(/\bte\s+puedo\s+encargar\b/g, "quiero")
     .replace(/\bpuedo\s+encargarte\b/g, "quiero")
@@ -1868,6 +1896,9 @@ function normalizeCommonCustomerTypos(messageText) {
     .replace(/\bte\s+quiero\s+pedir\b/g, "quiero")
     .replace(/\bvoy\s+a\s+pedir\b/g, "quiero")
     .replace(/\bquiero\s+pedir\b/g, "quiero")
+    .replace(/\bvoy\s+a\s+querer\b/g, "quiero")
+    .replace(/\bte\s+voy\s+a\s+querer\s+pedir\b/g, "quiero")
+    .replace(/\bte\s+voy\s+a\s+querer\b/g, "quiero")
     .replace(/\bme\s+pedis\b/g, "quiero")
     .replace(/\bpreparame\b/g, "quiero")
     .replace(/\bme\s+preparas\b/g, "quiero")
