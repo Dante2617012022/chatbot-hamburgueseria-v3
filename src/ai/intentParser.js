@@ -81,6 +81,15 @@ const CANCEL_KEYWORDS = [
   "anular",
   "anula",
   "cancelar pedido",
+  "me arrepenti",
+  "me arrepentí",
+  "me arrepiento",
+  "arrepenti",
+  "arrepentí",
+  "empezar de nuevo",
+  "empeza de nuevo",
+  "empezá de nuevo",
+  "arrancar de nuevo",
   "borra todo",
   "vaciar pedido"
 ];
