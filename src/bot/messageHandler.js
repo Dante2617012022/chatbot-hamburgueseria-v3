@@ -1,6 +1,7 @@
 import { parseCustomerMessage } from "../ai/intentParser.js";
 import { applyMessageCorrections } from "../ai/messageCorrections.js";
 import { parseMultiProductMessage } from "../ai/multiProductParser.js";
+import { tryHandleAdvancedOrderEdit } from "../orders/orderEditService.js";
 import { parseCustomerMessageWithAiFallback, shouldUseAiFallback } from "../ai/aiFallbackParser.js";
 import { handleAdminCommand, isAdminCommand, shouldBlockCustomerMessages } from "../admin/adminCommands.js";
 import { CUSTOMER_INTENT } from "../ai/intentTypes.js";
@@ -107,6 +108,30 @@ export async function handleCustomerMessage({
 
   if (pendingConfirmationResult) {
     return pendingConfirmationResult;
+  }
+
+  const advancedOrderEditResult = await tryHandleAdvancedOrderEdit({
+    order,
+    messageText
+  });
+
+  if (advancedOrderEditResult) {
+    saveOrderSession(customerPhone, order);
+
+    saveMessageEvent({
+      customerPhone,
+      direction: "IN",
+      text: messageText,
+      intent: advancedOrderEditResult.parsedMessage.intent,
+      status: advancedOrderEditResult.parsedMessage.status,
+      payload: advancedOrderEditResult.parsedMessage
+    });
+
+    return {
+      parsedMessage: advancedOrderEditResult.parsedMessage,
+      order,
+      reply: advancedOrderEditResult.reply
+    };
   }
 
   const multiProductMessage = await parseMultiProductMessage(messageText);
