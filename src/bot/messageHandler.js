@@ -11,7 +11,9 @@ import {
   confirmOrder,
   removeProductFromOrder,
   setDeliveryData,
-  setPaymentMethod
+  setPaymentMethod,
+  clearPendingProductConfirmation,
+  setPendingProductConfirmation
 } from "../orders/orderService.js";
 import { formatOrderSummary } from "../orders/orderFormatter.js";
 import { createPaymentPreferenceForOrder } from "../payments/paymentService.js";
@@ -96,6 +98,16 @@ export async function handleCustomerMessage({
   }
 
   const order = getOrCreateOrderSession(customerPhone);
+
+  const pendingConfirmationResult = await handlePendingProductConfirmation({
+    customerPhone,
+    order,
+    messageText
+  });
+
+  if (pendingConfirmationResult) {
+    return pendingConfirmationResult;
+  }
 
   const multiProductMessage = await parseMultiProductMessage(messageText);
 
@@ -259,12 +271,27 @@ async function handleAddProduct({ customerPhone, order, parsedMessage }) {
   }
 
   if (!product) {
+    const suggestions = parsedMessage.entities?.suggestions || [];
+
+    if (suggestions.length > 0) {
+      setPendingProductConfirmation(order, {
+        type: "ADD_PRODUCT",
+        quantity,
+        suggestions,
+        createdAt: new Date().toISOString()
+      });
+
+      saveOrderSession(customerPhone, order);
+    }
+
     return {
       parsedMessage,
       order,
       reply: buildProductNotClearReply(parsedMessage)
     };
   }
+
+  clearPendingProductConfirmation(order);
 
   await addProductToOrder(order, product.id, { quantity });
   saveOrderSession(customerPhone, order);
@@ -480,4 +507,124 @@ function formatPaymentLabel(paymentMethod) {
   };
 
   return labels[paymentMethod] || paymentMethod;
+}
+
+async function handlePendingProductConfirmation({
+  customerPhone,
+  order,
+  messageText
+}) {
+  const pending = order.pendingProductConfirmation;
+
+  if (!pending) {
+    return null;
+  }
+
+  if (isNegativeConfirmation(messageText)) {
+    clearPendingProductConfirmation(order);
+    saveOrderSession(customerPhone, order);
+
+    return {
+      parsedMessage: {
+        rawText: messageText,
+        normalizedText: messageText,
+        intent: "RECHAZAR_SUGERENCIA_PRODUCTO",
+        confidence: 1,
+        status: "OK",
+        entities: {},
+        replyHint: null
+      },
+      order,
+      reply: "Perfecto, no lo agrego. Escribime el producto de otra forma o pedime el menú."
+    };
+  }
+
+  if (!isAffirmativeConfirmation(messageText)) {
+    return null;
+  }
+
+  const firstSuggestion = pending.suggestions?.[0];
+
+  if (!firstSuggestion?.id) {
+    clearPendingProductConfirmation(order);
+    saveOrderSession(customerPhone, order);
+
+    return null;
+  }
+
+  await addProductToOrder(order, firstSuggestion.id, {
+    quantity: pending.quantity || 1
+  });
+
+  clearPendingProductConfirmation(order);
+  saveOrderSession(customerPhone, order);
+
+  const parsedMessage = {
+    rawText: messageText,
+    normalizedText: messageText,
+    intent: "CONFIRMAR_SUGERENCIA_PRODUCTO",
+    confidence: 1,
+    status: "OK",
+    entities: {
+      productId: firstSuggestion.id,
+      quantity: pending.quantity || 1
+    },
+    replyHint: null
+  };
+
+  saveMessageEvent({
+    customerPhone,
+    direction: "IN",
+    text: messageText,
+    intent: parsedMessage.intent,
+    status: parsedMessage.status,
+    payload: parsedMessage
+  });
+
+  return {
+    parsedMessage,
+    order,
+    reply:
+      `Perfecto, agregué *${firstSuggestion.nombre}* a tu pedido.\n\n` +
+      formatOrderSummary(order)
+  };
+}
+
+function isAffirmativeConfirmation(messageText) {
+  const normalized = String(messageText || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  return [
+    "si",
+    "sisi",
+    "si ese",
+    "si esa",
+    "ese",
+    "esa",
+    "correcto",
+    "exacto",
+    "dale",
+    "ok",
+    "okay"
+  ].includes(normalized);
+}
+
+function isNegativeConfirmation(messageText) {
+  const normalized = String(messageText || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  return [
+    "no",
+    "no ese",
+    "no esa",
+    "ninguno",
+    "ninguna",
+    "cancelar"
+  ].includes(normalized);
 }

@@ -23,6 +23,7 @@ export function createEmptyOrder({ customerPhone = null } = {}) {
     deliveryCost: 0,
 
     paymentMethod: null,
+    pendingProductConfirmation: null,
 
     items: [],
     notes: [],
@@ -311,4 +312,18 @@ function normalizeNotes(notes) {
     .filter((note) => typeof note === "string")
     .map((note) => note.trim())
     .filter(Boolean);
+}
+
+export function setPendingProductConfirmation(order, confirmation) {
+  order.pendingProductConfirmation = confirmation;
+  order.updatedAt = new Date().toISOString();
+
+  return order;
+}
+
+export function clearPendingProductConfirmation(order) {
+  order.pendingProductConfirmation = null;
+  order.updatedAt = new Date().toISOString();
+
+  return order;
 }
