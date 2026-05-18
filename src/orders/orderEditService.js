@@ -185,7 +185,7 @@ function parseChangeRequest(text) {
 
 function cleanChangeQuery(query) {
   return normalizeText(query)
-    .replace(/^(una|un|uno|la|el|las|los)\s+/, "")
+    .replace(/^(una|un|uno|la|el|las|los|esa|ese|esta|este)\s*/, "")
     .replace(/\b(poneme|pone|poné|agregame|agrega|sumame|suma|mandame|manda)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
