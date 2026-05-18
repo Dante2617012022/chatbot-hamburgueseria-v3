@@ -402,6 +402,10 @@ async function handleCombinedCustomerMessage({
   const deliveryData = detectCombinedDeliveryData(messageText);
   const productText = cleanCombinedProductText(messageText);
 
+  if (isFinalConfirmationWithDeliveryWord(messageText, order)) {
+    return null;
+  }
+
   if (
     !paymentMethod &&
     !deliveryData &&
@@ -410,58 +414,62 @@ async function handleCombinedCustomerMessage({
     return null;
   }
 
-  if (!looksLikeCombinedProductText(productText)) {
+  const hasProductText = looksLikeCombinedProductText(productText);
+
+  if (!hasProductText && !paymentMethod && !deliveryData) {
     return null;
   }
 
   let handledProduct = false;
   let productReply = null;
 
-  const editResult = await tryHandleAdvancedOrderEdit({
-    order,
-    messageText: productText
-  });
+  if (hasProductText) {
+    const editResult = await tryHandleAdvancedOrderEdit({
+      order,
+      messageText: productText
+    });
 
-  if (editResult) {
-    handledProduct = true;
-    productReply = editResult.reply;
-  } else {
-    const multiProductMessage = await parseMultiProductMessage(productText);
-
-    if (multiProductMessage.ok) {
-      for (const item of multiProductMessage.items) {
-        await addProductToOrder(order, item.product.id, {
-          quantity: item.quantity
-        });
-      }
-
+    if (editResult) {
       handledProduct = true;
-      productReply =
-        "Agregué a tu pedido:\n" +
-        multiProductMessage.items
-          .map((item) => `- ${item.quantity} x ${item.product.nombre}`)
-          .join("\n");
+      productReply = editResult.reply;
     } else {
-      let parsedProductMessage = await parseCustomerMessage(productText);
-      parsedProductMessage = applyMessageCorrections(parsedProductMessage, productText);
+      const multiProductMessage = await parseMultiProductMessage(productText);
 
-      if (
-        parsedProductMessage.intent === CUSTOMER_INTENT.ADD_PRODUCT &&
-        parsedProductMessage.entities?.product
-      ) {
-        await addProductToOrder(order, parsedProductMessage.entities.product.id, {
-          quantity: parsedProductMessage.entities.quantity || 1
-        });
+      if (multiProductMessage.ok) {
+        for (const item of multiProductMessage.items) {
+          await addProductToOrder(order, item.product.id, {
+            quantity: item.quantity
+          });
+        }
 
         handledProduct = true;
         productReply =
           "Agregué a tu pedido:\n" +
-          `- ${parsedProductMessage.entities.quantity || 1} x ${parsedProductMessage.entities.product.nombre}`;
+          multiProductMessage.items
+            .map((item) => `- ${item.quantity} x ${item.product.nombre}`)
+            .join("\n");
+      } else {
+        let parsedProductMessage = await parseCustomerMessage(productText);
+        parsedProductMessage = applyMessageCorrections(parsedProductMessage, productText);
+
+        if (
+          parsedProductMessage.intent === CUSTOMER_INTENT.ADD_PRODUCT &&
+          parsedProductMessage.entities?.product
+        ) {
+          await addProductToOrder(order, parsedProductMessage.entities.product.id, {
+            quantity: parsedProductMessage.entities.quantity || 1
+          });
+
+          handledProduct = true;
+          productReply =
+            "Agregué a tu pedido:\n" +
+            `- ${parsedProductMessage.entities.quantity || 1} x ${parsedProductMessage.entities.product.nombre}`;
+        }
       }
     }
   }
 
-  if (!handledProduct) {
+  if (!handledProduct && !paymentMethod && !deliveryData) {
     return null;
   }
 
@@ -512,12 +520,26 @@ async function handleCombinedCustomerMessage({
     parsedMessage,
     order,
     reply:
-      (productReply || "Actualicé tu pedido.") +
+      (productReply || "Actualicé los datos de tu pedido.") +
       deliveryReply +
       paymentReply +
       "\n\n" +
       formatOrderSummary(order)
   };
+}
+
+function isFinalConfirmationWithDeliveryWord(messageText, order) {
+  const text = normalizeCombinedText(messageText);
+
+  if (!order?.items?.length || !order.deliveryType || !order.paymentMethod) {
+    return false;
+  }
+
+  if (order.deliveryType === "DELIVERY" && !order.deliveryAddress) {
+    return false;
+  }
+
+  return /^(ok|okay|dale|listo|confirmo|si)\s+(mandalo|manda|envialo|enviamelo|asi|nomás|nomas)$/.test(text);
 }
 
 function hasCombinedMessageShape(messageText) {
@@ -1122,20 +1144,16 @@ async function handlePendingProductConfirmation({
     };
   }
 
-  if (!isAffirmativeConfirmation(messageText)) {
+  const selectedSuggestion = await resolvePendingProductSuggestion({
+    pending,
+    messageText
+  });
+
+  if (!selectedSuggestion?.id) {
     return null;
   }
 
-  const firstSuggestion = pending.suggestions?.[0];
-
-  if (!firstSuggestion?.id) {
-    clearPendingProductConfirmation(order);
-    saveOrderSession(customerPhone, order);
-
-    return null;
-  }
-
-  await addProductToOrder(order, firstSuggestion.id, {
+  await addProductToOrder(order, selectedSuggestion.id, {
     quantity: pending.quantity || 1
   });
 
@@ -1149,7 +1167,7 @@ async function handlePendingProductConfirmation({
     confidence: 1,
     status: "OK",
     entities: {
-      productId: firstSuggestion.id,
+      productId: selectedSuggestion.id,
       quantity: pending.quantity || 1
     },
     replyHint: null
@@ -1168,9 +1186,116 @@ async function handlePendingProductConfirmation({
     parsedMessage,
     order,
     reply:
-      `Perfecto, agregué *${firstSuggestion.nombre}* a tu pedido.\n\n` +
+      `Perfecto, agregué *${selectedSuggestion.nombre}* a tu pedido.\n\n` +
       formatOrderSummary(order)
   };
+}
+
+async function resolvePendingProductSuggestion({
+  pending,
+  messageText
+}) {
+  const normalized = normalizeShortConfirmationText(messageText);
+  const suggestions = pending.suggestions || [];
+
+  if (isAffirmativeConfirmation(messageText)) {
+    return suggestions[0] || null;
+  }
+
+  const index = getSuggestionIndexFromText(normalized);
+
+  if (index !== null) {
+    return suggestions[index] || null;
+  }
+
+  const size = getVariantSizeFromText(normalized);
+
+  if (size) {
+    const directSuggestion = suggestions.find((suggestion) =>
+      normalizeShortConfirmationText(`${suggestion.id} ${suggestion.nombre}`).includes(size)
+    );
+
+    if (directSuggestion) {
+      return directSuggestion;
+    }
+
+    const family = getFamilyFromPendingSuggestions(suggestions);
+
+    if (family) {
+      const match = await parseCustomerMessage(`${family} ${size}`);
+
+      if (match?.entities?.product) {
+        return {
+          id: match.entities.product.id,
+          nombre: match.entities.product.nombre,
+          precio: match.entities.product.precio,
+          confidence: 1
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function normalizeShortConfirmationText(messageText) {
+  return String(messageText || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\b(no|esa|ese|esta|este|la|el|las|los|porfa|por favor)\b/g, " ")
+    .replace(/,/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getSuggestionIndexFromText(text) {
+  if (/\b(primera|primero|1|uno|una)\b/.test(text)) {
+    return 0;
+  }
+
+  if (/\b(segunda|segundo|2|dos)\b/.test(text)) {
+    return 1;
+  }
+
+  if (/\b(tercera|tercero|3|tres)\b/.test(text)) {
+    return 2;
+  }
+
+  return null;
+}
+
+function getVariantSizeFromText(text) {
+  if (/\bsimple\b/.test(text)) {
+    return "simple";
+  }
+
+  if (/\bdoble\b/.test(text)) {
+    return "doble";
+  }
+
+  if (/\btriple\b/.test(text)) {
+    return "triple";
+  }
+
+  return null;
+}
+
+function getFamilyFromPendingSuggestions(suggestions) {
+  const value = normalizeShortConfirmationText(
+    suggestions.map((suggestion) => `${suggestion.id} ${suggestion.nombre}`).join(" ")
+  );
+
+  if (value.includes("bacon")) return "bacon";
+  if (value.includes("cheeseburger") || value.includes("cheese")) return "cheese";
+  if (value.includes("cuarto")) return "cuarto";
+  if (value.includes("americana")) return "americana";
+  if (value.includes("big")) return "big";
+  if (value.includes("crispy")) return "crispy";
+  if (value.includes("araka")) return "araka";
+  if (value.includes("onion")) return "onion";
+
+  return null;
 }
 
 function isAffirmativeConfirmation(messageText) {
