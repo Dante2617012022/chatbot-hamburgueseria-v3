@@ -1,3 +1,4 @@
+import { ORDER_STATUS } from "../orders/orderStatus.js";
 import { getDatabase } from "./database.js";
 import { upsertCustomer } from "./customerRepository.js";
 
@@ -111,6 +112,43 @@ export function getAllActiveOrders() {
       phone: row.customer_phone,
       order: JSON.parse(row.order_json)
     }));
+}
+export function cleanupStaleActiveOrders({
+  olderThanMs = getDefaultActiveOrderTtlMs(),
+  nowMs = Date.now()
+} = {}) {
+  const staleStatuses = [
+    ORDER_STATUS.CREATED,
+    ORDER_STATUS.BUILDING
+  ];
+
+  const cutoff = new Date(nowMs - olderThanMs).toISOString();
+  const placeholders = staleStatuses.map(() => "?").join(", ");
+  const db = getDatabase();
+
+  const result = db
+    .prepare(`
+      DELETE FROM active_orders
+      WHERE updated_at < ?
+        AND status IN (${placeholders})
+    `)
+    .run(cutoff, ...staleStatuses);
+
+  return {
+    deleted: result.changes,
+    cutoff,
+    statuses: staleStatuses
+  };
+}
+
+function getDefaultActiveOrderTtlMs() {
+  const hours = Number(process.env.ACTIVE_ORDER_TTL_HOURS || 12);
+
+  if (!Number.isFinite(hours) || hours <= 0) {
+    return 12 * 60 * 60 * 1000;
+  }
+
+  return hours * 60 * 60 * 1000;
 }
 
 export function clearActiveOrdersForTests() {
