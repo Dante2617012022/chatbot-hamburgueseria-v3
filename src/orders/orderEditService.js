@@ -1,6 +1,6 @@
 import { findBestProduct } from "../menu/productMatcher.js";
 import { normalizeText } from "../utils/textNormalizer.js";
-import { removeProductFromOrder } from "./orderService.js";
+import { addProductToOrder, removeProductFromOrder } from "./orderService.js";
 import { formatOrderSummary } from "./orderFormatter.js";
 
 const NUMBER_WORDS = new Map([
@@ -23,6 +23,13 @@ export async function tryHandleAdvancedOrderEdit({ order, messageText }) {
 
   if (!order?.items || order.items.length === 0) {
     return null;
+  }
+
+  if (isRepeatLastItemMessage(normalizedText)) {
+    return repeatLastItem({
+      order,
+      messageText
+    });
   }
 
   if (isKeepOnlyFries(normalizedText)) {
@@ -81,7 +88,52 @@ function isKeepOnlyBurgers(text) {
 }
 
 function isRemoveMessage(text) {
-  return /^(sacame|saca|quitame|quita|borra|elimina|eliminame)\b/.test(text);
+  return /^(sacame|saca|quitame|quita|borra|elimina|eliminame|sin)\b/.test(text);
+}
+
+function isRepeatLastItemMessage(text) {
+  return (
+    /^(agregame|agrega|sumame|suma|mandame|manda|dame|pone|poneme)\s+(una|un|uno|otra|otro|1)\s+(mas|más)$/.test(text) ||
+    /^(agregame|agrega|sumame|suma|mandame|manda|dame|pone|poneme)\s+(otra|otro)$/.test(text) ||
+    /^(agregame|agrega|sumame|suma|mandame|manda|dame)\s+lo\s+mismo$/.test(text) ||
+    /^(una|un|uno|otra|otro|1)\s+(mas|más)$/.test(text) ||
+    /^(otra|otro|lo mismo)$/.test(text)
+  );
+}
+
+async function repeatLastItem({ order, messageText }) {
+  const lastItem = order.items.at(-1);
+
+  if (!lastItem) {
+    return null;
+  }
+
+  const productId = getItemProductId(lastItem);
+
+  if (!productId) {
+    return null;
+  }
+
+  await addProductToOrder(order, productId, {
+    quantity: 1
+  });
+
+  return {
+    handled: true,
+    parsedMessage: buildParsedMessage({
+      messageText,
+      intent: "REPETIR_ULTIMO_PRODUCTO",
+      status: "OK",
+      entities: {
+        productId,
+        quantity: 1
+      }
+    }),
+    order,
+    reply:
+      `Agregué otra unidad de *${getItemName(lastItem)}*.\n\n` +
+      formatOrderSummary(order)
+  };
 }
 
 function keepOnlyMatchingItems({
@@ -163,7 +215,7 @@ async function removeMatchingItemFromOrder({
 
 function parseRemoveRequest(text) {
   let cleaned = text
-    .replace(/^(sacame|saca|quitame|quita|borra|elimina|eliminame)\s+/, "")
+    .replace(/^(sacame|saca|quitame|quita|borra|elimina|eliminame|sin)\s+/, "")
     .replace(/\b(de|del|la|el|los|las)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
