@@ -715,7 +715,7 @@ async function handleCombinedCustomerMessage({
   const deliveryReply = deliveryData?.deliveryType === "RETIRO"
     ? "\nEntrega: *retiro por el local*"
     : deliveryData?.deliveryType === "DELIVERY"
-      ? `\nEntrega: *delivery*${deliveryData.deliveryAddress ? ` a *${deliveryData.deliveryAddress}*` : ""}`
+      ? `\nEntrega: *delivery*${deliveryData.deliveryAddress ? ` a *${deliveryData.deliveryAddress}*` : ""} sin costo`
       : "";
 
   const paymentReply = paymentMethod
