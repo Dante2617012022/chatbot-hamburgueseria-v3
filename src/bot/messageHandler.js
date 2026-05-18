@@ -20,6 +20,7 @@ import {
 import { formatOrderSummary } from "../orders/orderFormatter.js";
 import { createPaymentPreferenceForOrder } from "../payments/paymentService.js";
 import { createLocalNotificationForOrder, NOTIFICATION_TYPE } from "../notifications/notificationService.js";
+import { formatOrderStatusLabel } from "../orders/orderWorkflowService.js";
 import { getBusinessAvailability } from "../business/businessHoursService.js";
 import { findDeliveryZoneByText } from "../delivery/deliveryZoneService.js";
 import { sanitizeMessageText } from "../security/inputSanitizer.js";
@@ -101,6 +102,15 @@ export async function handleCustomerMessage({
   }
 
   const order = getOrCreateOrderSession(customerPhone);
+
+  const customerOrderInfoResult = handleCustomerOrderInfoRequest({
+    order,
+    messageText
+  });
+
+  if (customerOrderInfoResult) {
+    return customerOrderInfoResult;
+  }
 
   const combinedMessageResult = await handleCombinedCustomerMessage({
     customerPhone,
@@ -430,6 +440,155 @@ function handleRemoveProduct({ customerPhone, order, parsedMessage }) {
       `Quité *${product.nombre}* de tu pedido.\n\n` +
       formatOrderSummary(order)
   };
+}
+
+function handleCustomerOrderInfoRequest({
+  order,
+  messageText
+}) {
+  if (isOrderSummaryRequest(messageText)) {
+    return {
+      parsedMessage: buildSyntheticParsedMessage({
+        messageText,
+        intent: "VER_PEDIDO_ACTUAL"
+      }),
+      order,
+      reply: order.items.length > 0
+        ? formatOrderSummary(order)
+        : "Todavía no tenés productos en el pedido. Podés pedirme el menú o decirme qué querés agregar."
+    };
+  }
+
+  if (!isOrderStatusRequest(messageText)) {
+    return null;
+  }
+
+  return {
+    parsedMessage: buildSyntheticParsedMessage({
+      messageText,
+      intent: "CONSULTAR_ESTADO_PEDIDO"
+    }),
+    order,
+    reply: buildCustomerOrderStatusReply(order)
+  };
+}
+
+function buildSyntheticParsedMessage({
+  messageText,
+  intent
+}) {
+  return {
+    rawText: messageText,
+    normalizedText: normalizeCombinedText(messageText),
+    intent,
+    confidence: 1,
+    status: "OK",
+    entities: {},
+    replyHint: null
+  };
+}
+
+function buildCustomerOrderStatusReply(order) {
+  if (!order.items?.length) {
+    return "Todavía no tenés un pedido activo. Podés pedirme el menú o decirme qué querés agregar.";
+  }
+
+  const statusLabel = formatOrderStatusLabel(order.status);
+  const lines = [
+    "*Estado de tu pedido*",
+    "",
+    `Estado: *${statusLabel}*`
+  ];
+
+  if (order.status === "ESPERANDO_PAGO" && order.paymentMethod === "MERCADO_PAGO") {
+    lines.push("Tu pedido está esperando pago por Mercado Pago. Cuando el pago esté aprobado, vamos a marcarlo como pagado.");
+  } else if (order.status === "ESPERANDO_CONFIRMACION") {
+    lines.push("Tu pedido ya fue confirmado por vos y está pendiente de revisión del local.");
+  } else if (order.status === "PAGADO") {
+    lines.push("El pago figura como aprobado. El local puede avanzar con la preparación.");
+  } else if (order.status === "EN_PREPARACION") {
+    lines.push("El local ya está preparando tu pedido.");
+  } else if (order.status === "LISTO") {
+    lines.push(order.deliveryType === "RETIRO"
+      ? "Tu pedido está listo para retirar por el local."
+      : "Tu pedido ya está listo.");
+  } else if (order.status === "EN_CAMINO") {
+    lines.push("Tu pedido está en camino.");
+  } else if (order.status === "ENTREGADO") {
+    lines.push("Tu pedido figura como entregado.");
+  } else if (order.status === "CANCELADO") {
+    lines.push("Este pedido figura como cancelado.");
+  } else {
+    lines.push("Todavía estamos armando los datos de tu pedido.");
+  }
+
+  lines.push("");
+  lines.push(formatOrderSummary(order));
+
+  return lines.join("\n");
+}
+
+function isOrderSummaryRequest(messageText) {
+  const text = normalizeCombinedText(messageText);
+
+  return [
+    "ver pedido",
+    "mi pedido",
+    "pedido",
+    "resumen",
+    "resumen del pedido",
+    "que pedi",
+    "que pedí",
+    "que tengo pedido",
+    "cuanto va",
+    "cuanto llevo"
+  ].includes(text);
+}
+
+function isOrderStatusRequest(messageText) {
+  const text = normalizeCombinedText(messageText);
+
+  if (!text) {
+    return false;
+  }
+
+  if (
+    [
+      "estado",
+      "estado pedido",
+      "estado del pedido",
+      "como va mi pedido",
+      "cómo va mi pedido",
+      "como va el pedido",
+      "cómo va el pedido",
+      "cuanto falta",
+      "cuánto falta",
+      "falta mucho",
+      "ya esta listo",
+      "ya está listo",
+      "ya esta listo?",
+      "ya está listo?",
+      "esta listo",
+      "está listo",
+      "esta listo?",
+      "está listo?",
+      "lo vienen trayendo",
+      "lo vienen trayendo?",
+      "viene en camino",
+      "esta en camino",
+      "está en camino"
+    ].includes(text)
+  ) {
+    return true;
+  }
+
+  return (
+    /\bestado\b.*\bpedido\b/.test(text) ||
+    /\b(cuanto|cuánto)\s+falta\b/.test(text) ||
+    /\b(ya\s+)?esta\s+listo\??$/.test(text) ||
+    /\b(ya\s+)?está\s+listo\??$/.test(text) ||
+    /\blo\s+vienen\s+trayendo\??$/.test(text)
+  );
 }
 
 async function handleCombinedCustomerMessage({
