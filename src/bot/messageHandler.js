@@ -142,6 +142,16 @@ export async function handleCustomerMessage({
     return pendingDeliveryAddressResult;
   }
 
+  const paymentSupportResult = await handlePaymentSupportMessage({
+    customerPhone,
+    order,
+    messageText
+  });
+
+  if (paymentSupportResult) {
+    return paymentSupportResult;
+  }
+
   const deliveryAddressUpdateResult = await handleDeliveryAddressUpdateRequest({
     customerPhone,
     order,
@@ -602,6 +612,7 @@ function detectCombinedPaymentMethod(messageText) {
   const text = normalizeCombinedText(messageText);
 
   if (
+    /\b(no\s+me\s+anda|no\s+funciona|falla|fallo|no\s+puedo\s+usar)\b.*\b(mp|mercado pago|mercadopago)\b.*\b(efectivo|pago al retirar)\b/.test(text) ||
     /\b(efectivo|pago al retirar|pago en efectivo)\b.*\bno\b.*\b(mp|mercado pago|mercadopago|transferencia)\b/.test(text) ||
     /\bera\s+(efectivo|pago al retirar|pago en efectivo)\b/.test(text)
   ) {
@@ -979,6 +990,173 @@ function appendDeliveryReference(address, reference) {
 
 function looksLikeAddressWithNumber(value) {
   return /\d/.test(normalizeCombinedText(value));
+}
+
+async function handlePaymentSupportMessage({
+  customerPhone,
+  order,
+  messageText
+}) {
+  const text = normalizeCombinedText(messageText);
+
+  if (isPaymentLinkRequest(text)) {
+    return handlePaymentLinkRequest({
+      customerPhone,
+      order,
+      messageText
+    });
+  }
+
+  if (isCustomerSaysAlreadyPaid(text)) {
+    return handleCustomerSaysAlreadyPaid({
+      customerPhone,
+      order,
+      messageText
+    });
+  }
+
+  if (isPaymentReceiptMessage(text)) {
+    return handlePaymentReceiptMessage({
+      customerPhone,
+      order,
+      messageText
+    });
+  }
+
+  return null;
+}
+
+async function handlePaymentLinkRequest({
+  customerPhone,
+  order,
+  messageText
+}) {
+  if (order.paymentMethod !== "MERCADO_PAGO" || order.items.length === 0) {
+    return null;
+  }
+
+  const paymentResult = await createPaymentPreferenceForOrder(order);
+
+  const parsedMessage = {
+    rawText: messageText,
+    normalizedText: messageText,
+    intent: "REENVIAR_LINK_PAGO",
+    confidence: 1,
+    status: "OK",
+    entities: {
+      paymentMethod: "MERCADO_PAGO",
+      initPoint: paymentResult.initPoint
+    },
+    replyHint: null
+  };
+
+  saveMessageEvent({
+    customerPhone,
+    direction: "IN",
+    text: messageText,
+    intent: parsedMessage.intent,
+    status: parsedMessage.status,
+    payload: parsedMessage
+  });
+
+  return {
+    parsedMessage,
+    order,
+    reply:
+      "Link de pago Mercado Pago:\n" +
+      paymentResult.initPoint +
+      "\n\nCuando el pago esté aprobado, vamos a marcar el pedido como pagado."
+  };
+}
+
+function handleCustomerSaysAlreadyPaid({
+  customerPhone,
+  order,
+  messageText
+}) {
+  if (order.paymentMethod !== "MERCADO_PAGO") {
+    return null;
+  }
+
+  const parsedMessage = {
+    rawText: messageText,
+    normalizedText: messageText,
+    intent: "CLIENTE_DICE_PAGO_REALIZADO",
+    confidence: 1,
+    status: "PAGO_NO_VERIFICADO",
+    entities: {
+      paymentMethod: "MERCADO_PAGO"
+    },
+    replyHint: null
+  };
+
+  saveMessageEvent({
+    customerPhone,
+    direction: "IN",
+    text: messageText,
+    intent: parsedMessage.intent,
+    status: parsedMessage.status,
+    payload: parsedMessage
+  });
+
+  return {
+    parsedMessage,
+    order,
+    reply:
+      "Gracias por avisar. Cuando el pago esté aprobado por Mercado Pago, vamos a marcar el pedido como pagado automáticamente."
+  };
+}
+
+function handlePaymentReceiptMessage({
+  customerPhone,
+  order,
+  messageText
+}) {
+  const parsedMessage = {
+    rawText: messageText,
+    normalizedText: messageText,
+    intent: "CLIENTE_ENVIA_COMPROBANTE",
+    confidence: 1,
+    status: "PENDIENTE_REVISION_MANUAL",
+    entities: {
+      paymentMethod: order.paymentMethod || null
+    },
+    replyHint: null
+  };
+
+  saveMessageEvent({
+    customerPhone,
+    direction: "IN",
+    text: messageText,
+    intent: parsedMessage.intent,
+    status: parsedMessage.status,
+    payload: parsedMessage
+  });
+
+  return {
+    parsedMessage,
+    order,
+    reply:
+      "Recibido. Si mandaste comprobante, lo revisamos con una persona del local y te confirmamos a la brevedad."
+  };
+}
+
+function isPaymentLinkRequest(text) {
+  return (
+    /\b(pasame|pasar|mandame|manda|enviame|envia)\b.*\b(link|pago)\b/.test(text) ||
+    /\b(link\s+de\s+pago|link\s+mercado\s+pago)\b/.test(text)
+  );
+}
+
+function isCustomerSaysAlreadyPaid(text) {
+  return (
+    /\b(ya\s+pague|ya\s+pagué|pague|pagué|pagado)\b/.test(text) &&
+    !isPaymentReceiptMessage(text)
+  );
+}
+
+function isPaymentReceiptMessage(text) {
+  return /\b(comprobante|captura|screenshot|transferi|transferí|te\s+mando\s+comprobante|mando\s+comprobante)\b/.test(text);
 }
 
 function handleClearOrderRequest({
