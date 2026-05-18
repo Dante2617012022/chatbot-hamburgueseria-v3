@@ -165,6 +165,8 @@ function parseChangeRequest(text) {
   }
 
   const targetOnlyPatterns = [
+    /^(?:confirmo|confirmar|confirmado|listo|ok|dale)\s+pero\s+(?:cambiala|cambialo|cambia)\s+a\s+(.+)$/,
+    /^(?:cambiala|cambialo|cambia)\s+a\s+(.+)$/,
     /^(?:mejor\s+hacela|mejor\s+hacelo|hacela|hacelo)\s+(.+)$/,
     /^(?:mejor|cambiala por|cambialo por)\s+(.+)$/
   ];
@@ -185,6 +187,7 @@ function parseChangeRequest(text) {
 
 function cleanChangeQuery(query) {
   return normalizeText(query)
+    .replace(/\s+y\s*$/g, "")
     .replace(/^(una|un|uno|la|el|las|los|esa|ese|esta|este)\s*/, "")
     .replace(/\b(poneme|pone|poné|agregame|agrega|sumame|suma|mandame|manda)\b/g, " ")
     .replace(/\s+/g, " ")
@@ -395,6 +398,8 @@ function isRemoveMessage(text) {
 
 function isRepeatLastItemMessage(text) {
   return (
+    /^(agregame|agrega|sumame|suma|mandame|manda|dame|pone|poneme)\s+(otra|otro)\s+(igual|mas|más)$/.test(text) ||
+    /^(otra|otro)\s+igual$/.test(text) ||
     /^(agregame|agrega|sumame|suma|mandame|manda|dame|pone|poneme)\s+(una|un|uno|otra|otro|1)\s+(mas|más)$/.test(text) ||
     /^(agregame|agrega|sumame|suma|mandame|manda|dame|pone|poneme)\s+(otra|otro)$/.test(text) ||
     /^(agregame|agrega|sumame|suma|mandame|manda|dame)\s+lo\s+mismo$/.test(text) ||
