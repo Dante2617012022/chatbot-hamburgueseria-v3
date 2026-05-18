@@ -100,6 +100,16 @@ export async function handleCustomerMessage({
 
   const order = getOrCreateOrderSession(customerPhone);
 
+  const standaloneDeliveryChoiceResult = handleStandaloneDeliveryChoice({
+    customerPhone,
+    order,
+    messageText
+  });
+
+  if (standaloneDeliveryChoiceResult) {
+    return standaloneDeliveryChoiceResult;
+  }
+
   const pendingConfirmationResult = await handlePendingProductConfirmation({
     customerPhone,
     order,
@@ -108,6 +118,16 @@ export async function handleCustomerMessage({
 
   if (pendingConfirmationResult) {
     return pendingConfirmationResult;
+  }
+
+  const pendingDeliveryAddressResult = await handlePendingDeliveryAddress({
+    customerPhone,
+    order,
+    messageText
+  });
+
+  if (pendingDeliveryAddressResult) {
+    return pendingDeliveryAddressResult;
   }
 
   const advancedOrderEditResult = await tryHandleAdvancedOrderEdit({
@@ -362,10 +382,188 @@ function handleRemoveProduct({ customerPhone, order, parsedMessage }) {
   };
 }
 
+function handleStandaloneDeliveryChoice({
+  customerPhone,
+  order,
+  messageText
+}) {
+  if (!isStandaloneDeliveryChoice(messageText)) {
+    return null;
+  }
+
+  setDeliveryData(order, {
+    deliveryType: "DELIVERY",
+    deliveryAddress: null,
+    deliveryZone: null,
+    deliveryCost: 0
+  });
+
+  saveOrderSession(customerPhone, order);
+
+  const parsedMessage = {
+    rawText: messageText,
+    normalizedText: messageText,
+    intent: "ELEGIR_DELIVERY_SIN_DIRECCION",
+    confidence: 1,
+    status: "OK",
+    entities: {
+      deliveryType: "DELIVERY",
+      possibleAddress: null
+    },
+    replyHint: null
+  };
+
+  saveMessageEvent({
+    customerPhone,
+    direction: "IN",
+    text: messageText,
+    intent: parsedMessage.intent,
+    status: parsedMessage.status,
+    payload: parsedMessage
+  });
+
+  return {
+    parsedMessage,
+    order,
+    reply: "Perfecto, sería con delivery. Pasame tu dirección, por favor. El delivery no tiene costo."
+  };
+}
+
+function isStandaloneDeliveryChoice(messageText) {
+  const normalized = sanitizeMessageText(messageText)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  return [
+    "delivery",
+    "envio",
+    "envío",
+    "con delivery",
+    "con envio",
+    "con envío",
+    "a domicilio"
+  ].includes(normalized);
+}
+
+async function handlePendingDeliveryAddress({
+  customerPhone,
+  order,
+  messageText
+}) {
+  if (order.deliveryType !== "DELIVERY" || order.deliveryAddress) {
+    return null;
+  }
+
+  if (!looksLikeStandaloneAddress(messageText)) {
+    return null;
+  }
+
+  const possibleAddress = sanitizeMessageText(messageText);
+  const zoneMatch = await findDeliveryZoneByText(possibleAddress);
+
+  if (!zoneMatch.ok && zoneMatch.requiresKnownZone) {
+    return {
+      parsedMessage: {
+        rawText: messageText,
+        normalizedText: possibleAddress,
+        intent: "COMPLETAR_DIRECCION_DELIVERY",
+        confidence: 0.8,
+        status: "ZONE_NOT_FOUND",
+        entities: {
+          possibleAddress
+        },
+        replyHint: null
+      },
+      order,
+      reply:
+        "Tenemos delivery sin costo, pero no pude reconocer si esa dirección está dentro de nuestra zona. " +
+        "Pasame el barrio o zona, por favor."
+    };
+  }
+
+  const deliveryZone = zoneMatch.zone?.nombre || null;
+
+  setDeliveryData(order, {
+    deliveryType: "DELIVERY",
+    deliveryAddress: possibleAddress,
+    deliveryZone,
+    deliveryCost: 0
+  });
+
+  saveOrderSession(customerPhone, order);
+
+  const parsedMessage = {
+    rawText: messageText,
+    normalizedText: possibleAddress,
+    intent: "COMPLETAR_DIRECCION_DELIVERY",
+    confidence: 0.9,
+    status: "OK",
+    entities: {
+      deliveryType: "DELIVERY",
+      possibleAddress
+    },
+    replyHint: null
+  };
+
+  saveMessageEvent({
+    customerPhone,
+    direction: "IN",
+    text: messageText,
+    intent: parsedMessage.intent,
+    status: parsedMessage.status,
+    payload: parsedMessage
+  });
+
+  const zoneText = deliveryZone
+    ? `\nZona: *${deliveryZone}*`
+    : "\nNo pude detectar la zona automáticamente, pero el delivery queda sin costo.";
+
+  return {
+    parsedMessage,
+    order,
+    reply:
+      `Perfecto, envío a: *${possibleAddress}*.` +
+      zoneText +
+      "\nDelivery: *sin costo*.\n\n" +
+      formatOrderSummary(order)
+  };
+}
+
+function looksLikeStandaloneAddress(messageText) {
+  const normalized = sanitizeMessageText(messageText)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  if (!normalized) {
+    return false;
+  }
+
+  if (
+    /\b(retiro|retirar|local|buscar|efectivo|transferencia|mercado pago|mercadopago|mp|confirmo|cancelar|menu|menú)\b/.test(normalized)
+  ) {
+    return false;
+  }
+
+  return /\d/.test(normalized);
+}
+
 async function handleChooseDelivery({ customerPhone, order, parsedMessage }) {
   const possibleAddress = parsedMessage.entities.possibleAddress;
 
   if (!possibleAddress) {
+    setDeliveryData(order, {
+      deliveryType: "DELIVERY",
+      deliveryAddress: null,
+      deliveryZone: null,
+      deliveryCost: 0
+    });
+
+    saveOrderSession(customerPhone, order);
+
     return {
       parsedMessage,
       order,
@@ -509,12 +707,12 @@ function buildMissingDataReply(errorMessage, order) {
     return "Todavía no tenés productos en el pedido. Podés pedirme el menú o decirme qué querés agregar.";
   }
 
-  if (errorMessage.includes("delivery") || errorMessage.includes("retiro")) {
-    return "Antes de confirmar, decime si es *delivery* o *retiro por el local*.";
-  }
-
   if (errorMessage.includes("dirección")) {
     return "Me falta la dirección para el delivery. Pasámela por favor.";
+  }
+
+  if (errorMessage.includes("delivery") || errorMessage.includes("retiro")) {
+    return "Antes de confirmar, decime si es *delivery* o *retiro por el local*.";
   }
 
   if (errorMessage.includes("forma de pago")) {
