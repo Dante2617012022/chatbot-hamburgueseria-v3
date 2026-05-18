@@ -12,7 +12,7 @@ import {
   clearOrder,
   confirmOrder,
   removeProductFromOrder,
-  setDeliveryData,
+  setDeliveryData as setDeliveryDataRaw,
   setPaymentMethod,
   clearPendingProductConfirmation,
   setPendingProductConfirmation
@@ -34,6 +34,54 @@ import {
   saveMessageEvent,
   saveUnrecognizedMessage
 } from "../storage/messageRepository.js";
+
+
+function setDeliveryData(order, deliveryData) {
+  if (
+    !deliveryData ||
+    deliveryData.deliveryType !== "DELIVERY" ||
+    !deliveryData.deliveryAddress
+  ) {
+    return setDeliveryDataRaw(order, deliveryData);
+  }
+
+  return setDeliveryDataRaw(order, {
+    ...deliveryData,
+    deliveryAddress: normalizeStoredDeliveryAddress(deliveryData.deliveryAddress)
+  });
+}
+
+function normalizeStoredDeliveryAddress(value) {
+  let text = normalizeCombinedText(value)
+    .replace(/[,;]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const correctionMatch = text.match(
+    /^(?:me\s+equivoque|me\s+equivoqué|perdon|perdón)?\s*(?:era|es)\s+(.+?)\s+no\s+.+$/
+  );
+
+  if (correctionMatch?.[1]) {
+    text = correctionMatch[1];
+  }
+
+  const trailingAddressMatch = text.match(/\ba\s+([a-z0-9\s]*\d+[a-z0-9\s]*)$/);
+
+  if (
+    trailingAddressMatch?.[1] &&
+    /\b(quiero|quisiera|dame|mandame|preparame|necesito|agregame|sumame|me\s+preparas|hola)\b/.test(text)
+  ) {
+    text = trailingAddressMatch[1];
+  }
+
+  return text
+    .replace(/\b(pago\s+con|pago|mercado\s+pago|mercadopago|mercado|mp|efectivo|transferencia)\b.*$/g, " ")
+    .replace(/\b(delivery|envio|dirección|direccion)\b/g, " ")
+    .replace(/^(?:a|en)\s+/g, "")
+    .replace(/\b(no|sino|era|es)\b\s*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 export async function handleCustomerMessage({
   customerPhone,
@@ -673,7 +721,26 @@ async function handleCombinedCustomerMessage({
   messageText
 }) {
   const paymentMethod = detectCombinedPaymentMethod(messageText);
-  const deliveryData = detectCombinedDeliveryData(messageText);
+  let deliveryData = detectCombinedDeliveryData(messageText);
+  const standaloneAddress = extractStandaloneAddressFromCombinedMessage(messageText);
+
+  if (
+    standaloneAddress &&
+    (
+      order.deliveryType === "DELIVERY" ||
+      deliveryData?.deliveryType === "DELIVERY" ||
+      normalizeCombinedText(messageText).includes("delivery") ||
+      normalizeCombinedText(messageText).includes("envio")
+    )
+  ) {
+    deliveryData = {
+      deliveryType: "DELIVERY",
+      deliveryAddress: standaloneAddress,
+      deliveryZone: null,
+      deliveryCost: 0
+    };
+  }
+
   const productText = cleanCombinedProductText(messageText);
 
   if (isFinalConfirmationWithDeliveryWord(messageText, order)) {
@@ -969,8 +1036,10 @@ function extractCombinedDeliveryAddress(messageText) {
 
   const markerPatterns = [
     /\bdelivery\s+a\s+(.+)$/,
+    /\bdelivery\s*,?\s+(.+\d.*)$/,
     /\bmandalo\s+a\s+(.+)$/,
     /\benvio\s+a\s+(.+)$/,
+    /\benvio\s*,?\s+(.+\d.*)$/,
     /\bdireccion\s+(.+)$/,
     /\ba\s+([a-z0-9\s]+\d+[a-z0-9\s]*)$/
   ];
@@ -984,6 +1053,28 @@ function extractCombinedDeliveryAddress(messageText) {
   }
 
   return null;
+}
+
+function extractStandaloneAddressFromCombinedMessage(messageText) {
+  let text = normalizeCombinedText(messageText);
+
+  text = cleanCombinedTail(text)
+    .replace(/\b(delivery|envio|direccion)\b/g, " ")
+    .replace(/[,;]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!text || !/\d/.test(text)) {
+    return null;
+  }
+
+  if (
+    /\b(retiro|retirar|local|buscar|confirmo|cancelar|menu|menú)\b/.test(text)
+  ) {
+    return null;
+  }
+
+  return text;
 }
 
 function cleanCombinedProductText(messageText) {
@@ -1770,6 +1861,7 @@ function normalizeCommonCustomerTypos(messageText) {
     .replace(/\bpreparas\b/g, "quiero")
     .replace(/\bvoy\s+a\s+necesitar\b/g, "quiero")
     .replace(/\bnecesito\b/g, "quiero")
+    .replace(/\bmercado\b/g, "mercado pago")
     .replace(/\btriples\b/g, "triple")
     .replace(/\bagregale\b/g, "agregame")
     .replace(/\bsumale\b/g, "sumame")
