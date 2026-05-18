@@ -96,6 +96,7 @@ const HUMAN_KEYWORDS = [
 ];
 
 const PICKUP_KEYWORDS = [
+  "para llevar",
   "retiro",
   "retirar",
   "paso a buscar",
@@ -125,6 +126,9 @@ const DELIVERY_KEYWORDS = [
 ];
 
 const PAYMENT_KEYWORDS = [
+  "pago al retirar",
+  "pagar al retirar",
+  "pago cuando retiro",
   "mercado pago",
   "mercadopago",
   "mp",
@@ -399,7 +403,12 @@ function parsePaymentMessage({ rawText, normalizedText }) {
     normalizedText.includes(" mp ")
   ) {
     paymentMethod = "MERCADO_PAGO";
-  } else if (normalizedText.includes("efectivo")) {
+  } else if (
+    normalizedText.includes("efectivo") ||
+    normalizedText.includes("pago al retirar") ||
+    normalizedText.includes("pagar al retirar") ||
+    normalizedText.includes("pago cuando retiro")
+  ) {
     paymentMethod = "EFECTIVO";
   } else if (normalizedText.includes("transferencia")) {
     paymentMethod = "TRANSFERENCIA";
