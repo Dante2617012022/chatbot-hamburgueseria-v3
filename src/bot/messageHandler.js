@@ -255,7 +255,8 @@ export async function handleCustomerMessage({
           .map((item) => `- ${item.quantity} x ${item.product.nombre}`)
           .join("\n") +
         "\n\n" +
-        formatOrderSummary(order)
+        formatOrderSummary(order) +
+        buildNextStepPrompt(order)
     };
   }
 
@@ -321,7 +322,7 @@ export async function handleCustomerMessage({
       return {
         parsedMessage,
         order,
-        reply: `Perfecto, marcamos tu pedido como *retiro por el local*.\n\n${formatOrderSummary(order)}`
+        reply: `Perfecto, marcamos tu pedido como *retiro por el local*.\n\n${formatOrderSummary(order)}${buildNextStepPrompt(order)}`
       };
 
     case CUSTOMER_INTENT.CHOOSE_DELIVERY:
@@ -407,7 +408,8 @@ async function handleAddProduct({ customerPhone, order, parsedMessage }) {
     reply:
       `Agregué a tu pedido:\n` +
       `- ${quantity} x ${product.nombre}\n\n` +
-      formatOrderSummary(order)
+      formatOrderSummary(order) +
+      buildNextStepPrompt(order)
   };
 }
 
@@ -730,7 +732,8 @@ async function handleCombinedCustomerMessage({
       deliveryReply +
       paymentReply +
       "\n\n" +
-      formatOrderSummary(order)
+      formatOrderSummary(order) +
+      buildNextStepPrompt(order)
   };
 }
 
@@ -1515,7 +1518,8 @@ async function handlePendingDeliveryAddress({
       `Perfecto, envío a: *${possibleAddress}*.` +
       zoneText +
       "\nDelivery: *sin costo*.\n\n" +
-      formatOrderSummary(order)
+      formatOrderSummary(order) +
+      buildNextStepPrompt(order)
   };
 }
 
@@ -1593,7 +1597,8 @@ async function handleChooseDelivery({ customerPhone, order, parsedMessage }) {
       `Perfecto, envío a: *${possibleAddress}*.` +
       zoneText +
       "\nDelivery: *sin costo*.\n\n" +
-      formatOrderSummary(order)
+      formatOrderSummary(order) +
+      buildNextStepPrompt(order)
   };
 }
 
@@ -1685,6 +1690,8 @@ function normalizeCommonCustomerTypos(messageText) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\bkiero\b/g, "quiero")
+    .replace(/\bagregale\b/g, "agregame")
+    .replace(/\bsumale\b/g, "sumame")
     .replace(/\bqiero\b/g, "quiero")
     .replace(/\bqro\b/g, "quiero")
     .replace(/\bbcon\b/g, "bacon")
@@ -1727,6 +1734,31 @@ function buildRateLimitReply(rateLimit) {
     `Por seguridad pausé la atención automática para este número por aproximadamente ${minutes} minuto(s). ` +
     "Si necesitás ayuda urgente, escribí *humano* más tarde o esperá a que te respondan manualmente."
   );
+}
+
+
+function buildNextStepPrompt(order) {
+  if (!order?.items?.length) {
+    return "";
+  }
+
+  if (!order.deliveryType) {
+    return "\n\nPara completar el pedido, me falta saber si es *delivery* o *retiro por el local*.";
+  }
+
+  if (order.deliveryType === "DELIVERY" && !order.deliveryAddress) {
+    return "\n\nPara completar el pedido, me falta la *dirección* para el delivery. Pasame tu dirección, por favor.";
+  }
+
+  if (!order.paymentMethod) {
+    return "\n\nPara completar el pedido, me falta la forma de pago: *Mercado Pago*, *efectivo* o *transferencia*.";
+  }
+
+  if (order.status === "ARMANDO_PEDIDO" || order.status === "CREADO") {
+    return "\n\nYa tengo todos los datos. Si está todo correcto, respondé *confirmo*.";
+  }
+
+  return "";
 }
 
 function buildMissingDataReply(errorMessage, order) {
@@ -1832,7 +1864,8 @@ async function handlePendingProductConfirmation({
     order,
     reply:
       `Perfecto, agregué *${selectedSuggestion.nombre}* a tu pedido.\n\n` +
-      formatOrderSummary(order)
+      formatOrderSummary(order) +
+      buildNextStepPrompt(order)
   };
 }
 
