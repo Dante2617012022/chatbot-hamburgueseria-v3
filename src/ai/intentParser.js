@@ -446,6 +446,7 @@ function parsePaymentMessage({ rawText, normalizedText }) {
 
 function isPaymentCorrectionToCash(text) {
   return (
+    /\b(no\s+me\s+anda|no\s+funciona|falla|fallo|no\s+puedo\s+usar)\b.*\b(mp|mercado pago|mercadopago)\b.*\b(efectivo|pago al retirar)\b/.test(text) ||
     /\b(efectivo|pago al retirar|pagar al retirar)\b.*\bno\b.*\b(mp|mercado pago|mercadopago|transferencia)\b/.test(text) ||
     /\bera\s+(efectivo|pago al retirar)\b/.test(text)
   );
