@@ -130,10 +130,16 @@ function shouldTryMultiProduct(normalizedText) {
       cleanedText
     );
 
+  const startsWithKnownProductTerm =
+    /^(coca|gaseosa|bebida|lata|latita|papas|papitas|nugget|nuggets|cheese|cheeseburger|bacon|big|cuarto|americana|americanas|araka|onion|crispy|camdis)\b/.test(
+      cleanedText
+    );
+
   return (
     (hasAddVerb && hasConnector) ||
     (looksLikeNaturalOrder && hasConnector) ||
     (startsWithQuantity && hasConnector) ||
+    (startsWithKnownProductTerm && hasConnector) ||
     hasSpecialTwoDoubles ||
     isNaturalSingleProductOrder(normalizedText)
   );
