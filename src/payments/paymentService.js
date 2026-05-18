@@ -27,7 +27,8 @@ export async function createPaymentPreferenceForOrder(
   if (
     existingPayment &&
     existingPayment.status === "PENDING" &&
-    existingPayment.initPoint
+    existingPayment.initPoint &&
+    existingPayment.amount === order.total
   ) {
     return {
       alreadyExists: true,

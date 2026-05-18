@@ -112,6 +112,16 @@ export async function handleCustomerMessage({
     return customerOrderInfoResult;
   }
 
+  const progressRequestResult = handleProgressRequest({
+    customerPhone,
+    order,
+    messageText
+  });
+
+  if (progressRequestResult) {
+    return progressRequestResult;
+  }
+
   const combinedMessageResult = await handleCombinedCustomerMessage({
     customerPhone,
     order,
@@ -590,6 +600,70 @@ function isOrderStatusRequest(messageText) {
     /\b(ya\s+)?esta\s+listo\??$/.test(text) ||
     /\b(ya\s+)?está\s+listo\??$/.test(text) ||
     /\blo\s+vienen\s+trayendo\??$/.test(text)
+  );
+}
+
+function handleProgressRequest({
+  customerPhone,
+  order,
+  messageText
+}) {
+  const text = normalizeCombinedText(messageText);
+
+  if (!isProgressRequest(text)) {
+    return null;
+  }
+
+  const parsedMessage = buildSyntheticParsedMessage({
+    messageText,
+    intent: "CONTINUAR_FLUJO_PEDIDO"
+  });
+
+  saveMessageEvent({
+    customerPhone,
+    direction: "IN",
+    text: messageText,
+    intent: parsedMessage.intent,
+    status: parsedMessage.status,
+    payload: parsedMessage
+  });
+
+  if (!order.items?.length) {
+    return {
+      parsedMessage,
+      order,
+      reply: "Todavía no tenés productos en el pedido. Podés pedirme el menú o decirme qué querés agregar."
+    };
+  }
+
+  const nextStep = buildNextStepPrompt(order);
+
+  return {
+    parsedMessage,
+    order,
+    reply:
+      formatOrderSummary(order) +
+      (nextStep || "\n\nSi querés cambiar algo, decime qué modificamos. Si está todo correcto, respondé *confirmo*.")
+  };
+}
+
+function isProgressRequest(text) {
+  return (
+    [
+      "sigamos",
+      "seguimos",
+      "continuemos",
+      "siguiente",
+      "como sigo",
+      "cómo sigo",
+      "que sigue",
+      "qué sigue",
+      "que falta",
+      "qué falta",
+      "y ahora"
+    ].includes(text) ||
+    /\b(que|qué)\s+(falta|sigue)\b/.test(text) ||
+    /\b(como|cómo)\s+sigo\b/.test(text)
   );
 }
 
@@ -1305,8 +1379,9 @@ function handlePaymentReceiptMessage({
 
 function isPaymentLinkRequest(text) {
   return (
-    /\b(pasame|pasar|mandame|manda|enviame|envia)\b.*\b(link|pago)\b/.test(text) ||
-    /\b(link\s+de\s+pago|link\s+mercado\s+pago)\b/.test(text)
+    /\b(pasame|pasar|mandame|manda|enviame|envia)\b.*\b(link|pago|pagar)\b/.test(text) ||
+    /\b(dame|necesito|quiero)\b.*\b(pagar|link|pago)\b/.test(text) ||
+    /\b(para\s+pagar|link\s+de\s+pago|link\s+mercado\s+pago)\b/.test(text)
   );
 }
 
@@ -1742,20 +1817,54 @@ function buildNextStepPrompt(order) {
     return "";
   }
 
-  if (!order.deliveryType) {
-    return "\n\nPara completar el pedido, me falta saber si es *delivery* o *retiro por el local*.";
-  }
+  const missing = [];
 
-  if (order.deliveryType === "DELIVERY" && !order.deliveryAddress) {
-    return "\n\nPara completar el pedido, me falta la *dirección* para el delivery. Pasame tu dirección, por favor.";
+  if (!order.deliveryType) {
+    missing.push("*entrega*: delivery o retiro por el local");
+    missing.push("*dirección*: solo si es delivery");
+  } else if (order.deliveryType === "DELIVERY" && !order.deliveryAddress) {
+    missing.push("*dirección* para el delivery");
   }
 
   if (!order.paymentMethod) {
-    return "\n\nPara completar el pedido, me falta la forma de pago: *Mercado Pago*, *efectivo* o *transferencia*.";
+    missing.push("*forma de pago*: Mercado Pago, efectivo o transferencia");
+  }
+
+  if (missing.length > 0) {
+    return (
+      "\n\nPara completar el pedido me falta:" +
+      "\n" +
+      missing.map((item) => `- ${item}`).join("\n") +
+      buildNextStepExample(order)
+    );
   }
 
   if (order.status === "ARMANDO_PEDIDO" || order.status === "CREADO") {
     return "\n\nYa tengo todos los datos. Si está todo correcto, respondé *confirmo*.";
+  }
+
+  if (order.status === "ESPERANDO_PAGO" && order.paymentMethod === "MERCADO_PAGO") {
+    return "\n\nTu pedido está esperando pago por Mercado Pago. Si necesitás el link, escribí *pasame el link* o *dame para pagar*.";
+  }
+
+  return "";
+}
+
+function buildNextStepExample(order) {
+  if (!order.deliveryType) {
+    return "\n\nPodés mandarlo todo junto, por ejemplo: *delivery a Centenario 49 pago Mercado Pago* o *retiro efectivo*.";
+  }
+
+  if (order.deliveryType === "DELIVERY" && !order.deliveryAddress && !order.paymentMethod) {
+    return "\n\nPodés responder todo junto, por ejemplo: *dirección Centenario 49 pago Mercado Pago*.";
+  }
+
+  if (order.deliveryType === "DELIVERY" && !order.deliveryAddress) {
+    return "\n\nPodés responder, por ejemplo: *dirección Centenario 49*.";
+  }
+
+  if (!order.paymentMethod) {
+    return "\n\nPodés responder, por ejemplo: *Mercado Pago*, *efectivo* o *transferencia*.";
   }
 
   return "";
@@ -1988,6 +2097,12 @@ function isAffirmativeConfirmation(messageText) {
     "sisi",
     "si ese",
     "si esa",
+    "si a ese",
+    "si a esa",
+    "si es ese",
+    "si es esa",
+    "si esa misma",
+    "si ese mismo",
     "ese",
     "esa",
     "correcto",
