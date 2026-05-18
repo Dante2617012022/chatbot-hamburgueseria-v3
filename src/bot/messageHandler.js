@@ -142,6 +142,16 @@ export async function handleCustomerMessage({
     return pendingDeliveryAddressResult;
   }
 
+  const deliveryAddressUpdateResult = await handleDeliveryAddressUpdateRequest({
+    customerPhone,
+    order,
+    messageText
+  });
+
+  if (deliveryAddressUpdateResult) {
+    return deliveryAddressUpdateResult;
+  }
+
   const clearOrderResult = handleClearOrderRequest({
     customerPhone,
     order,
@@ -493,7 +503,7 @@ async function handleCombinedCustomerMessage({
   }
 
   if (deliveryData) {
-    setDeliveryData(order, deliveryData);
+    setDeliveryData(order, await enrichDeliveryDataWithZone(deliveryData));
   }
 
   if (paymentMethod) {
@@ -771,6 +781,10 @@ function cleanCombinedTail(value) {
     .replace(/\bpago\s+con\s+mp\b.*$/g, "")
     .replace(/\bpago\s+con\s+mercado\s+pago\b.*$/g, "")
     .replace(/\bpago\s+en\s+efectivo\b.*$/g, "")
+    .replace(/\bpago\s+efectivo\b.*$/g, "")
+    .replace(/\bpago\s+transferencia\b.*$/g, "")
+    .replace(/\bpago\s+con\s+transferencia\b.*$/g, "")
+    .replace(/\bpago\b.*$/g, "")
     .replace(/\bmercado\s+pago\b.*$/g, "")
     .replace(/\bmercadopago\b.*$/g, "")
     .replace(/\befectivo\b.*$/g, "")
@@ -809,6 +823,162 @@ function formatPaymentMethodLabel(paymentMethod) {
   };
 
   return labels[paymentMethod] || paymentMethod;
+}
+
+async function enrichDeliveryDataWithZone(deliveryData) {
+  if (deliveryData?.deliveryType !== "DELIVERY" || !deliveryData.deliveryAddress) {
+    return deliveryData;
+  }
+
+  const zoneMatch = await findDeliveryZoneByText(deliveryData.deliveryAddress);
+
+  return {
+    ...deliveryData,
+    deliveryZone: zoneMatch.zone?.nombre || null,
+    deliveryCost: 0
+  };
+}
+
+async function handleDeliveryAddressUpdateRequest({
+  customerPhone,
+  order,
+  messageText
+}) {
+  if (order.deliveryType !== "DELIVERY") {
+    return null;
+  }
+
+  const correctedAddress = extractDeliveryAddressCorrection(messageText);
+  const reference = extractDeliveryReference(messageText);
+
+  if (!correctedAddress && !reference) {
+    return null;
+  }
+
+  if (reference && !order.deliveryAddress) {
+    return null;
+  }
+
+  const nextAddress = correctedAddress
+    ? correctedAddress
+    : appendDeliveryReference(order.deliveryAddress, reference);
+
+  if (!nextAddress || !looksLikeAddressWithNumber(nextAddress)) {
+    return null;
+  }
+
+  const enrichedDeliveryData = await enrichDeliveryDataWithZone({
+    deliveryType: "DELIVERY",
+    deliveryAddress: nextAddress,
+    deliveryZone: null,
+    deliveryCost: 0
+  });
+
+  setDeliveryData(order, enrichedDeliveryData);
+  saveOrderSession(customerPhone, order);
+
+  const parsedMessage = {
+    rawText: messageText,
+    normalizedText: messageText,
+    intent: correctedAddress ? "CORREGIR_DIRECCION_DELIVERY" : "AGREGAR_REFERENCIA_DELIVERY",
+    confidence: 1,
+    status: "OK",
+    entities: {
+      deliveryType: "DELIVERY",
+      deliveryAddress: nextAddress,
+      deliveryZone: enrichedDeliveryData.deliveryZone
+    },
+    replyHint: null
+  };
+
+  saveMessageEvent({
+    customerPhone,
+    direction: "IN",
+    text: messageText,
+    intent: parsedMessage.intent,
+    status: parsedMessage.status,
+    payload: parsedMessage
+  });
+
+  const zoneText = enrichedDeliveryData.deliveryZone
+    ? `\nZona: *${enrichedDeliveryData.deliveryZone}*`
+    : "";
+
+  return {
+    parsedMessage,
+    order,
+    reply:
+      `Perfecto, actualicé la dirección: *${nextAddress}*.` +
+      zoneText +
+      "\n\n" +
+      formatOrderSummary(order)
+  };
+}
+
+function extractDeliveryAddressCorrection(messageText) {
+  const text = normalizeCombinedText(messageText);
+
+  const patterns = [
+    /^(?:me\s+equivoque|me\s+equivoqué|perdon|perdón)?\s*,?\s*era\s+(.+?)\s+no\s+.+$/,
+    /^(?:me\s+equivoque|me\s+equivoqué|perdon|perdón)?\s*,?\s*es\s+(.+?)\s+no\s+.+$/,
+    /^(?:direccion|dirección|dire)\s+(?:correcta|bien)?\s*:??\s*(.+)$/
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+
+    if (match?.[1]) {
+      return cleanDeliveryAddressValue(match[1]);
+    }
+  }
+
+  return null;
+}
+
+function extractDeliveryReference(messageText) {
+  const text = normalizeCombinedText(messageText);
+
+  const patterns = [
+    /^(?:referencia|ref)\s+(.+)$/,
+    /^(?:entre\s+calles|entre)\s+(.+)$/,
+    /^(?:casa|porton|portón|depto|departamento|piso)\s+(.+)$/
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+
+    if (match?.[1]) {
+      return cleanDeliveryAddressValue(match[1]);
+    }
+  }
+
+  return null;
+}
+
+function cleanDeliveryAddressValue(value) {
+  return cleanCombinedTail(value)
+    .replace(/\b(no|sino|era|es)\b\s*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function appendDeliveryReference(address, reference) {
+  const cleanedAddress = normalizeCombinedText(address);
+  const cleanedReference = cleanDeliveryAddressValue(reference);
+
+  if (!cleanedAddress || !cleanedReference) {
+    return cleanedAddress || cleanedReference;
+  }
+
+  if (cleanedAddress.includes(cleanedReference)) {
+    return cleanedAddress;
+  }
+
+  return `${cleanedAddress} referencia ${cleanedReference}`;
+}
+
+function looksLikeAddressWithNumber(value) {
+  return /\d/.test(normalizeCombinedText(value));
 }
 
 function handleClearOrderRequest({
