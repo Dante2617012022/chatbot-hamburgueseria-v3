@@ -405,7 +405,13 @@ async function parsePossibleProductOnlyMessage({ rawText, normalizedText }) {
 function parsePaymentMessage({ rawText, normalizedText }) {
   let paymentMethod = null;
 
-  if (
+  if (isPaymentCorrectionToCash(normalizedText)) {
+    paymentMethod = "EFECTIVO";
+  } else if (isPaymentCorrectionToMercadoPago(normalizedText)) {
+    paymentMethod = "MERCADO_PAGO";
+  } else if (isPaymentCorrectionToTransfer(normalizedText)) {
+    paymentMethod = "TRANSFERENCIA";
+  } else if (
     normalizedText.includes("mercado pago") ||
     normalizedText.includes("mercadopago") ||
     normalizedText === "mp" ||
@@ -438,6 +444,27 @@ function parsePaymentMessage({ rawText, normalizedText }) {
   });
 }
 
+function isPaymentCorrectionToCash(text) {
+  return (
+    /\b(efectivo|pago al retirar|pagar al retirar)\b.*\bno\b.*\b(mp|mercado pago|mercadopago|transferencia)\b/.test(text) ||
+    /\bera\s+(efectivo|pago al retirar)\b/.test(text)
+  );
+}
+
+function isPaymentCorrectionToMercadoPago(text) {
+  return (
+    /\b(mp|mercado pago|mercadopago)\b.*\bno\b.*\b(efectivo|transferencia)\b/.test(text) ||
+    /\bera\s+(mp|mercado pago|mercadopago)\b/.test(text)
+  );
+}
+
+function isPaymentCorrectionToTransfer(text) {
+  return (
+    /\btransferencia\b.*\bno\b.*\b(mp|mercado pago|mercadopago|efectivo)\b/.test(text) ||
+    /\bera\s+transferencia\b/.test(text)
+  );
+}
+
 async function findProductWithFallback(productQuery, normalizedText) {
   const productMatch = await findBestProduct(productQuery);
 
@@ -456,6 +483,14 @@ async function findProductWithFallback(productQuery, normalizedText) {
 
 function cleanProductQuery(normalizedText, actionKeywords) {
   let result = ` ${normalizedText} `;
+
+  result = result
+    .replace(/\bno\s+confirmes?\s+(todavia|todavía)\b/g, " ")
+    .replace(/\bno\s+confirmar\s+(todavia|todavía)\b/g, " ")
+    .replace(/\bno\s+confirmo\s+(todavia|todavía)\b/g, " ")
+    .replace(/\bconfirmes?\s+despues\b/g, " ")
+    .replace(/\btodavia\b/g, " ")
+    .replace(/\btodavía\b/g, " ");
 
   const keywords = [...actionKeywords].sort((a, b) => b.length - a.length);
 

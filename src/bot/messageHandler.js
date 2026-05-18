@@ -169,6 +169,14 @@ export async function handleCustomerMessage({
       payload: advancedOrderEditResult.parsedMessage
     });
 
+    if (shouldConfirmAfterEmbeddedCorrection(messageText)) {
+      return handleConfirmOrder({
+        customerPhone,
+        order,
+        parsedMessage: advancedOrderEditResult.parsedMessage
+      });
+    }
+
     return {
       parsedMessage: advancedOrderEditResult.parsedMessage,
       order,
@@ -517,6 +525,14 @@ async function handleCombinedCustomerMessage({
     payload: parsedMessage
   });
 
+  if (shouldConfirmAfterEmbeddedCorrection(messageText)) {
+    return handleConfirmOrder({
+      customerPhone,
+      order,
+      parsedMessage
+    });
+  }
+
   const deliveryReply = deliveryData?.deliveryType === "RETIRO"
     ? "\nEntrega: *retiro por el local*"
     : deliveryData?.deliveryType === "DELIVERY"
@@ -553,6 +569,16 @@ function isFinalConfirmationWithDeliveryWord(messageText, order) {
   return /^(ok|okay|dale|listo|confirmo|si)\s+(mandalo|manda|envialo|enviamelo|asi|nomás|nomas)$/.test(text);
 }
 
+function shouldConfirmAfterEmbeddedCorrection(messageText) {
+  const text = normalizeCombinedText(messageText);
+
+  if (/\bno\s+confirmes?\b/.test(text) || /\bno\s+confirmo\b/.test(text)) {
+    return false;
+  }
+
+  return /^(confirmo|confirmar|confirmado|listo|ok|dale)\b/.test(text);
+}
+
 function hasCombinedMessageShape(messageText) {
   const text = normalizeCombinedText(messageText);
 
@@ -564,6 +590,27 @@ function hasCombinedMessageShape(messageText) {
 
 function detectCombinedPaymentMethod(messageText) {
   const text = normalizeCombinedText(messageText);
+
+  if (
+    /\b(efectivo|pago al retirar|pago en efectivo)\b.*\bno\b.*\b(mp|mercado pago|mercadopago|transferencia)\b/.test(text) ||
+    /\bera\s+(efectivo|pago al retirar|pago en efectivo)\b/.test(text)
+  ) {
+    return "EFECTIVO";
+  }
+
+  if (
+    /\b(mp|mercado pago|mercadopago)\b.*\bno\b.*\b(efectivo|transferencia)\b/.test(text) ||
+    /\bera\s+(mp|mercado pago|mercadopago)\b/.test(text)
+  ) {
+    return "MERCADO_PAGO";
+  }
+
+  if (
+    /\btransferencia\b.*\bno\b.*\b(mp|mercado pago|mercadopago|efectivo)\b/.test(text) ||
+    /\bera\s+transferencia\b/.test(text)
+  ) {
+    return "TRANSFERENCIA";
+  }
 
   if (
     text.includes("mercado pago") ||
@@ -590,6 +637,32 @@ function detectCombinedPaymentMethod(messageText) {
 
 function detectCombinedDeliveryData(messageText) {
   const text = normalizeCombinedText(messageText);
+
+  if (
+    /\bdelivery\b.*\bno\b.*\bretiro\b/.test(text) ||
+    /\bera\s+delivery\b/.test(text)
+  ) {
+    const address = extractCombinedDeliveryAddress(text);
+
+    return {
+      deliveryType: "DELIVERY",
+      deliveryAddress: address,
+      deliveryZone: null,
+      deliveryCost: 0
+    };
+  }
+
+  if (
+    /\bretiro\b.*\bno\b.*\bdelivery\b/.test(text) ||
+    /\bera\s+retiro\b/.test(text)
+  ) {
+    return {
+      deliveryType: "RETIRO",
+      deliveryAddress: null,
+      deliveryZone: null,
+      deliveryCost: 0
+    };
+  }
 
   if (
     text.includes("retiro") ||
@@ -676,7 +749,9 @@ function cleanCombinedProductText(messageText) {
     .replace(/\bmercadopago\b/g, " ")
     .replace(/\befectivo\b/g, " ")
     .replace(/\btransferencia\b/g, " ")
-    .replace(/\bmp\b/g, " ");
+    .replace(/\bmp\b/g, " ")
+    .replace(/\bcambio\s+(?:de\s+pago\s+)?a\b/g, " ")
+    .replace(/\bcambio\s+de\s+pago\b/g, " ");
 
   text = text
     .replace(/\bdelivery\s+a\s+.+$/g, " ")
