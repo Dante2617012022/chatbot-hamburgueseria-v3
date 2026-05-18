@@ -184,6 +184,7 @@ function parseProductPart(part) {
 function normalizeProductQuery(value) {
   return String(value || "")
     .replace(/^(de|del|la|el|los|las)\s+/, "")
+    .replace(/\bpepsi\s+grande\b/g, "gaseosa grande")
     .replace(/\bgaseosas\s+grandes\s+pepsi\b/g, "gaseosa grande")
     .replace(/\bgaseosa\s+grande\s+pepsi\b/g, "gaseosa grande")
     .replace(/\bbebidas\s+grandes\s+pepsi\b/g, "bebida grande")
