@@ -9,6 +9,7 @@ import { formatMenuForWhatsApp, formatProductSuggestions } from "../menu/menuFor
 import {
   addProductToOrder,
   cancelOrder,
+  clearOrder,
   confirmOrder,
   removeProductFromOrder,
   setDeliveryData,
@@ -139,6 +140,16 @@ export async function handleCustomerMessage({
 
   if (pendingDeliveryAddressResult) {
     return pendingDeliveryAddressResult;
+  }
+
+  const clearOrderResult = handleClearOrderRequest({
+    customerPhone,
+    order,
+    messageText
+  });
+
+  if (clearOrderResult) {
+    return clearOrderResult;
   }
 
   const advancedOrderEditResult = await tryHandleAdvancedOrderEdit({
@@ -723,6 +734,58 @@ function formatPaymentMethodLabel(paymentMethod) {
   };
 
   return labels[paymentMethod] || paymentMethod;
+}
+
+function handleClearOrderRequest({
+  customerPhone,
+  order,
+  messageText
+}) {
+  if (!isClearOrderRequest(messageText)) {
+    return null;
+  }
+
+  clearOrder(order);
+  clearPendingProductConfirmation(order);
+  saveOrderSession(customerPhone, order);
+
+  const parsedMessage = {
+    rawText: messageText,
+    normalizedText: messageText,
+    intent: "VACIAR_PEDIDO",
+    confidence: 1,
+    status: "OK",
+    entities: {},
+    replyHint: null
+  };
+
+  saveMessageEvent({
+    customerPhone,
+    direction: "IN",
+    text: messageText,
+    intent: parsedMessage.intent,
+    status: parsedMessage.status,
+    payload: parsedMessage
+  });
+
+  return {
+    parsedMessage,
+    order,
+    reply: "Listo, saqué todos los productos del pedido. Si querés empezar otro, decime qué agregamos."
+  };
+}
+
+function isClearOrderRequest(messageText) {
+  const text = normalizeCombinedText(messageText);
+
+  return [
+    "saca todo",
+    "sacame todo",
+    "quita todo",
+    "quitame todo",
+    "elimina todo",
+    "eliminame todo"
+  ].includes(text);
 }
 
 function handleStandaloneDeliveryChoice({
