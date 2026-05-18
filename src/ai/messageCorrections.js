@@ -39,7 +39,8 @@ function extractDeliveryAddressFromNaturalMessage(messageText) {
   const text = String(messageText || "").trim();
 
   const patterns = [
-    /^(?:mandalo|mandamelo|mandámelo|envialo|envíalo|enviamelo|envíamelo|llevalo|llévalo|llevamelo|llévamelo)\s+a\s+(.+)$/i,
+    /^(?:mejor\s+)?(?:mandalo|mandamelo|mandámelo|envialo|envíalo|enviamelo|envíamelo|llevalo|llévalo|llevamelo|llévamelo)\s+a\s+(.+)$/i,
+    /^(?:va\s+con\s+)?(?:envio|envío|delivery)\s+a\s+(.+)$/i,
     /^(?:me lo mandas|me lo mandás|me lo envias|me lo enviás)\s+a\s+(.+)$/i,
     /^(?:lo quiero|lo necesito)\s+en\s+(.+)$/i
   ];
