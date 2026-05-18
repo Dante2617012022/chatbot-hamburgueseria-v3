@@ -1,5 +1,6 @@
 import { createEmptyOrder } from "../orders/orderService.js";
 import {
+  cleanupStaleActiveOrders,
   clearActiveOrdersForTests,
   deleteActiveOrderByPhone,
   getActiveOrderByPhone,
@@ -45,6 +46,10 @@ export function clearOrderSession(customerPhone) {
 
 export function getAllSessions() {
   return getAllActiveOrders();
+}
+
+export function cleanupStaleOrderSessions(options = {}) {
+  return cleanupStaleActiveOrders(options);
 }
 
 export function resetSessionsForTests() {
