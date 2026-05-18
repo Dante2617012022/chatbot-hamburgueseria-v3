@@ -4,6 +4,7 @@ import {
   approveDryRunPaymentByOrderId,
   processMercadoPagoWebhook
 } from "../payments/paymentService.js";
+import { validateMercadoPagoWebhookSignature } from "../payments/mercadoPagoWebhookSecurity.js";
 import { logger } from "../utils/logger.js";
 import { getDatabase } from "../storage/database.js";
 import { dispatchPendingLocalNotifications } from "../notifications/notificationDispatcher.js";
@@ -37,6 +38,24 @@ export function createHttpServer() {
 
   app.post("/webhooks/mercadopago", async (req, res) => {
     try {
+      const signatureValidation = validateMercadoPagoWebhookSignature({
+        query: req.query,
+        body: req.body,
+        headers: req.headers
+      });
+
+      if (!signatureValidation.ok) {
+        logger.warn(
+          { status: signatureValidation.status },
+          "Webhook Mercado Pago rechazado por firma inválida."
+        );
+
+        return res.status(401).json({
+          ok: false,
+          error: "INVALID_WEBHOOK_SIGNATURE"
+        });
+      }
+
       const result = await processMercadoPagoWebhook({
         query: req.query,
         body: req.body
@@ -44,7 +63,8 @@ export function createHttpServer() {
 
       logger.info(
         {
-          result
+          result,
+          signatureStatus: signatureValidation.status
         },
         "Webhook Mercado Pago procesado."
       );
@@ -71,10 +91,12 @@ export function createHttpServer() {
 
   app.post("/dev/notifications/dispatch", async (req, res) => {
     try {
-      if (process.env.NODE_ENV === "production") {
-        return res.status(403).json({
+      const devAccess = validateDevEndpointAccess(req);
+
+      if (!devAccess.ok) {
+        return res.status(devAccess.statusCode).json({
           ok: false,
-          error: "NOT_ALLOWED_IN_PRODUCTION"
+          error: devAccess.error
         });
       }
 
@@ -97,10 +119,12 @@ export function createHttpServer() {
 
   app.post("/dev/payments/:orderId/approve", (req, res) => {
     try {
-      if (process.env.NODE_ENV === "production") {
-        return res.status(403).json({
+      const devAccess = validateDevEndpointAccess(req);
+
+      if (!devAccess.ok) {
+        return res.status(devAccess.statusCode).json({
           ok: false,
-          error: "NOT_ALLOWED_IN_PRODUCTION"
+          error: devAccess.error
         });
       }
 
@@ -129,4 +153,44 @@ export function startHttpServer({ port = process.env.PORT || 3000 } = {}) {
   });
 
   return server;
+}
+
+function validateDevEndpointAccess(req) {
+  if (process.env.NODE_ENV === "production") {
+    return {
+      ok: false,
+      statusCode: 403,
+      error: "NOT_ALLOWED_IN_PRODUCTION"
+    };
+  }
+
+  const token = process.env.DEV_ENDPOINT_TOKEN;
+
+  if (!token) {
+    return {
+      ok: true,
+      statusCode: 200,
+      error: null
+    };
+  }
+
+  const receivedToken =
+    req.get("x-dev-token") ||
+    req.query?.dev_token ||
+    req.body?.devToken ||
+    null;
+
+  if (receivedToken !== token) {
+    return {
+      ok: false,
+      statusCode: 401,
+      error: "INVALID_DEV_TOKEN"
+    };
+  }
+
+  return {
+    ok: true,
+    statusCode: 200,
+    error: null
+  };
 }
