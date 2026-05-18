@@ -101,6 +101,16 @@ export async function handleCustomerMessage({
 
   const order = getOrCreateOrderSession(customerPhone);
 
+  const combinedMessageResult = await handleCombinedCustomerMessage({
+    customerPhone,
+    order,
+    messageText
+  });
+
+  if (combinedMessageResult) {
+    return combinedMessageResult;
+  }
+
   const standaloneDeliveryChoiceResult = handleStandaloneDeliveryChoice({
     customerPhone,
     order,
@@ -381,6 +391,316 @@ function handleRemoveProduct({ customerPhone, order, parsedMessage }) {
       `Quité *${product.nombre}* de tu pedido.\n\n` +
       formatOrderSummary(order)
   };
+}
+
+async function handleCombinedCustomerMessage({
+  customerPhone,
+  order,
+  messageText
+}) {
+  const paymentMethod = detectCombinedPaymentMethod(messageText);
+  const deliveryData = detectCombinedDeliveryData(messageText);
+  const productText = cleanCombinedProductText(messageText);
+
+  if (
+    !paymentMethod &&
+    !deliveryData &&
+    !hasCombinedMessageShape(messageText)
+  ) {
+    return null;
+  }
+
+  if (!looksLikeCombinedProductText(productText)) {
+    return null;
+  }
+
+  let handledProduct = false;
+  let productReply = null;
+
+  const editResult = await tryHandleAdvancedOrderEdit({
+    order,
+    messageText: productText
+  });
+
+  if (editResult) {
+    handledProduct = true;
+    productReply = editResult.reply;
+  } else {
+    const multiProductMessage = await parseMultiProductMessage(productText);
+
+    if (multiProductMessage.ok) {
+      for (const item of multiProductMessage.items) {
+        await addProductToOrder(order, item.product.id, {
+          quantity: item.quantity
+        });
+      }
+
+      handledProduct = true;
+      productReply =
+        "Agregué a tu pedido:\n" +
+        multiProductMessage.items
+          .map((item) => `- ${item.quantity} x ${item.product.nombre}`)
+          .join("\n");
+    } else {
+      let parsedProductMessage = await parseCustomerMessage(productText);
+      parsedProductMessage = applyMessageCorrections(parsedProductMessage, productText);
+
+      if (
+        parsedProductMessage.intent === CUSTOMER_INTENT.ADD_PRODUCT &&
+        parsedProductMessage.entities?.product
+      ) {
+        await addProductToOrder(order, parsedProductMessage.entities.product.id, {
+          quantity: parsedProductMessage.entities.quantity || 1
+        });
+
+        handledProduct = true;
+        productReply =
+          "Agregué a tu pedido:\n" +
+          `- ${parsedProductMessage.entities.quantity || 1} x ${parsedProductMessage.entities.product.nombre}`;
+      }
+    }
+  }
+
+  if (!handledProduct) {
+    return null;
+  }
+
+  if (deliveryData) {
+    setDeliveryData(order, deliveryData);
+  }
+
+  if (paymentMethod) {
+    setPaymentMethod(order, paymentMethod);
+  }
+
+  saveOrderSession(customerPhone, order);
+
+  const parsedMessage = {
+    rawText: messageText,
+    normalizedText: messageText,
+    intent: "MENSAJE_COMBINADO_PEDIDO",
+    confidence: 0.9,
+    status: "OK",
+    entities: {
+      productText,
+      deliveryData,
+      paymentMethod
+    },
+    replyHint: null
+  };
+
+  saveMessageEvent({
+    customerPhone,
+    direction: "IN",
+    text: messageText,
+    intent: parsedMessage.intent,
+    status: parsedMessage.status,
+    payload: parsedMessage
+  });
+
+  const deliveryReply = deliveryData?.deliveryType === "RETIRO"
+    ? "\nEntrega: *retiro por el local*"
+    : deliveryData?.deliveryType === "DELIVERY"
+      ? `\nEntrega: *delivery*${deliveryData.deliveryAddress ? ` a *${deliveryData.deliveryAddress}*` : ""}`
+      : "";
+
+  const paymentReply = paymentMethod
+    ? `\nPago: *${formatPaymentMethodLabel(paymentMethod)}*`
+    : "";
+
+  return {
+    parsedMessage,
+    order,
+    reply:
+      (productReply || "Actualicé tu pedido.") +
+      deliveryReply +
+      paymentReply +
+      "\n\n" +
+      formatOrderSummary(order)
+  };
+}
+
+function hasCombinedMessageShape(messageText) {
+  const text = normalizeCombinedText(messageText);
+
+  return (
+    detectCombinedPaymentMethod(text) !== null ||
+    detectCombinedDeliveryData(text) !== null
+  );
+}
+
+function detectCombinedPaymentMethod(messageText) {
+  const text = normalizeCombinedText(messageText);
+
+  if (
+    text.includes("mercado pago") ||
+    text.includes("mercadopago") ||
+    /\bmp\b/.test(text)
+  ) {
+    return "MERCADO_PAGO";
+  }
+
+  if (
+    text.includes("efectivo") ||
+    text.includes("pago al retirar") ||
+    text.includes("pago en efectivo")
+  ) {
+    return "EFECTIVO";
+  }
+
+  if (text.includes("transferencia")) {
+    return "TRANSFERENCIA";
+  }
+
+  return null;
+}
+
+function detectCombinedDeliveryData(messageText) {
+  const text = normalizeCombinedText(messageText);
+
+  if (
+    text.includes("retiro") ||
+    text.includes("retirar") ||
+    text.includes("para llevar") ||
+    text.includes("lo paso a buscar") ||
+    text.includes("lo busco") ||
+    text.includes("pago al retirar")
+  ) {
+    return {
+      deliveryType: "RETIRO",
+      deliveryAddress: null,
+      deliveryZone: null,
+      deliveryCost: 0
+    };
+  }
+
+  const address = extractCombinedDeliveryAddress(text);
+
+  if (address) {
+    return {
+      deliveryType: "DELIVERY",
+      deliveryAddress: address,
+      deliveryZone: null,
+      deliveryCost: 0
+    };
+  }
+
+  if (
+    text.includes("delivery") ||
+    text.includes("envio") ||
+    text.includes("mandalo")
+  ) {
+    return {
+      deliveryType: "DELIVERY",
+      deliveryAddress: null,
+      deliveryZone: null,
+      deliveryCost: 0
+    };
+  }
+
+  return null;
+}
+
+function extractCombinedDeliveryAddress(messageText) {
+  const text = normalizeCombinedText(messageText);
+
+  const markerPatterns = [
+    /\bdelivery\s+a\s+(.+)$/,
+    /\bmandalo\s+a\s+(.+)$/,
+    /\benvio\s+a\s+(.+)$/,
+    /\bdireccion\s+(.+)$/,
+    /\ba\s+([a-z0-9\s]+\d+[a-z0-9\s]*)$/
+  ];
+
+  for (const pattern of markerPatterns) {
+    const match = text.match(pattern);
+
+    if (match?.[1]) {
+      return cleanCombinedTail(match[1]);
+    }
+  }
+
+  return null;
+}
+
+function cleanCombinedProductText(messageText) {
+  let text = normalizeCombinedText(messageText);
+
+  text = text
+    .replace(/\bpago\s+al\s+retirar\b/g, " ")
+    .replace(/\bpago\s+cuando\s+retiro\b/g, " ")
+    .replace(/\bpara\s+retirar\b/g, " ")
+    .replace(/\bpara\s+llevar\b/g, " ")
+    .replace(/\blo\s+paso\s+a\s+buscar\b/g, " ")
+    .replace(/\blo\s+busco\b/g, " ")
+    .replace(/\bretiro\b/g, " ")
+    .replace(/\bretirar\b/g, " ")
+    .replace(/\bpago\s+en\s+efectivo\b/g, " ")
+    .replace(/\bpago\s+efectivo\b/g, " ")
+    .replace(/\bpago\s+con\s+mp\b/g, " ")
+    .replace(/\bpago\s+con\s+mercado\s+pago\b/g, " ")
+    .replace(/\bmercado\s+pago\b/g, " ")
+    .replace(/\bmercadopago\b/g, " ")
+    .replace(/\befectivo\b/g, " ")
+    .replace(/\btransferencia\b/g, " ")
+    .replace(/\bmp\b/g, " ");
+
+  text = text
+    .replace(/\bdelivery\s+a\s+.+$/g, " ")
+    .replace(/\bmandalo\s+a\s+.+$/g, " ")
+    .replace(/\benvio\s+a\s+.+$/g, " ")
+    .replace(/\bdireccion\s+.+$/g, " ")
+    .replace(/\ba\s+[a-z0-9\s]+\d+[a-z0-9\s]*$/g, " ");
+
+  return text
+    .replace(/\s+y\s*$/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cleanCombinedTail(value) {
+  return normalizeCombinedText(value)
+    .replace(/\bpago\s+con\s+mp\b.*$/g, "")
+    .replace(/\bpago\s+con\s+mercado\s+pago\b.*$/g, "")
+    .replace(/\bpago\s+en\s+efectivo\b.*$/g, "")
+    .replace(/\bmercado\s+pago\b.*$/g, "")
+    .replace(/\bmercadopago\b.*$/g, "")
+    .replace(/\befectivo\b.*$/g, "")
+    .replace(/\btransferencia\b.*$/g, "")
+    .replace(/\bmp\b.*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function looksLikeCombinedProductText(productText) {
+  const text = normalizeCombinedText(productText);
+
+  if (!text || text.length < 3) {
+    return false;
+  }
+
+  return (
+    /\b(quiero|mandame|dame|agregame|sumame|mejor|cambiala|cambialo|una|un|dos|tres|coca|gaseosa|bebida|lata|papas|nuggets|cheese|bacon|big|cuarto|americana|americanas|araka|onion|crispy|camdis)\b/.test(text)
+  );
+}
+
+function normalizeCombinedText(messageText) {
+  return String(messageText || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function formatPaymentMethodLabel(paymentMethod) {
+  const labels = {
+    MERCADO_PAGO: "Mercado Pago",
+    EFECTIVO: "Efectivo",
+    TRANSFERENCIA: "Transferencia"
+  };
+
+  return labels[paymentMethod] || paymentMethod;
 }
 
 function handleStandaloneDeliveryChoice({
@@ -716,8 +1036,8 @@ function normalizeCommonCustomerTypos(messageText) {
     .replace(/\bpapass\b/g, "papas")
     .replace(/\bcripsy\b/g, "crispy")
     .replace(/\bmndalo\b/g, "mandalo")
-    .replace(/^t paso dire\s+/g, "delivery a ")
-    .replace(/^te paso dire\s+/g, "delivery a ")
+    .replace(/\bt paso dire\s+/g, "delivery a ")
+    .replace(/\bte paso dire\s+/g, "delivery a ")
     .replace(/\bdire\b/g, "direccion")
     .replace(/\bmpago\b/g, "mercado pago")
     .replace(/\bmp\b/g, "mp")
