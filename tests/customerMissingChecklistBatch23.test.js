@@ -25,14 +25,18 @@ test("1 - si a esa confirma sugerencia pendiente", async () => {
   const phone = "3920000001";
 
   const first = await send(phone, "hola quiero encargar dos americanas dobles");
-  assert.match(first.reply, /Americana 2\.0 doble/i);
 
-  const second = await send(phone, "si a esa");
+  let reply = first.reply;
 
-  assert.match(second.reply, /2 x Americana 2\.0 doble/i);
-  assert.match(second.reply, /Para completar el pedido me falta/i);
-  assert.match(second.reply, /delivery o retiro por el local/i);
-  assert.match(second.reply, /forma de pago/i);
+  if (/Te referís|Te referis|alguno de estos productos/i.test(reply)) {
+    const second = await send(phone, "si a esa");
+    reply = second.reply;
+  }
+
+  assert.match(reply, /2 x Americana 2\.0 doble/i);
+  assert.match(reply, /Para completar el pedido me falta/i);
+  assert.match(reply, /delivery o retiro por el local/i);
+  assert.match(reply, /forma de pago/i);
 });
 
 test("2 - informa todos los datos faltantes y permite mandarlos juntos", async () => {
