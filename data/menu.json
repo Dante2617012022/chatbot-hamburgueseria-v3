@@ -61,7 +61,10 @@
         "cheese doble",
         "cheeseburger doble",
         "doble cheese",
-        "doble cheeseburger"
+        "doble cheeseburger",
+        "cheese dobles",
+        "cheeses dobles",
+        "dos cheese dobles"
       ]
     },
     {
@@ -107,7 +110,9 @@
         "doble con bacon",
         "hamburguesa doble con bacon",
         "hamburguesa con bacon doble",
-        "doble con panceta"
+        "doble con panceta",
+        "doble panceta",
+        "hamburguesa doble con panceta"
       ]
     },
     {
@@ -587,7 +592,15 @@
         "bebida grande",
         "coca litro",
         "sprite grande",
-        "fanta grande"
+        "fanta grande",
+        "coca de litro y medio",
+        "coca de 1.5",
+        "coca de 1.5l",
+        "coca litro medio",
+        "coca de litro medio",
+        "coca 1 litro y medio",
+        "gaseosa litro medio",
+        "gaseosa de litro y medio"
       ]
     }
   ]

@@ -5,6 +5,8 @@ const NUMBER_WORDS = new Map([
   ["un", 1],
   ["una", 1],
   ["uno", 1],
+  ["unas", 1],
+  ["unos", 1],
   ["dos", 2],
   ["tres", 3],
   ["cuatro", 4],
@@ -103,10 +105,12 @@ function shouldTryMultiProduct(normalizedText) {
       normalizedText
     );
 
+  const connectorText = normalizeAccessoryConnectors(cleanedText);
+
   const hasConnector =
-    cleanedText.includes(" y ") ||
-    cleanedText.includes(",") ||
-    cleanedText.includes(" mas ");
+    connectorText.includes(" y ") ||
+    connectorText.includes(",") ||
+    connectorText.includes(" mas ");
 
   const hasSpecialTwoDoubles =
     cleanedText.includes("dos dobles") &&
@@ -121,9 +125,15 @@ function shouldTryMultiProduct(normalizedText) {
     normalizedText.startsWith("preparame") ||
     normalizedText.startsWith("prepárame");
 
+  const startsWithQuantity =
+    /^(un|una|uno|unas|unos|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[1-9])\b/.test(
+      cleanedText
+    );
+
   return (
     (hasAddVerb && hasConnector) ||
     (looksLikeNaturalOrder && hasConnector) ||
+    (startsWithQuantity && hasConnector) ||
     hasSpecialTwoDoubles ||
     isNaturalSingleProductOrder(normalizedText)
   );
@@ -152,7 +162,7 @@ function extractProductRequests(normalizedText) {
     return special;
   }
 
-  let text = removeOrderIntro(normalizedText)
+  let text = normalizeAccessoryConnectors(removeOrderIntro(normalizedText))
     .replace(/\bmas\b/g, " y ");
 
   text = protectInternalConnectors(text);
@@ -192,6 +202,7 @@ function removeOrderIntro(text) {
   let cleaned = String(text || "").trim();
 
   const patterns = [
+    /^(buenas|buen dia|buen día|buenas tardes|buenas noches)\s+/,
     /^(voy a querer que me preparen|voy a querer que preparen)\s+/,
     /^(quiero encargar|quiero pedir|quiero que me preparen)\s+/,
     /^(voy a querer|quiero|quisiera|dame|agregame|agrega|sumame|suma|mandame|pone|poneme|necesito)\s+/,
@@ -216,6 +227,7 @@ function removeOrderIntro(text) {
 
 function parseProductPart(part) {
   let cleaned = part
+    .replace(/^(tambien|también)\s+/, "")
     .replace(/^(de|del|la|el|los|las)\s+/, "")
     .replace(/\bpor favor\b/g, "")
     .trim();
@@ -251,4 +263,11 @@ function restoreInternalConnectors(text) {
   return text
     .replace(/litro_y_medio/g, "litro y medio")
     .replace(/1_y_medio/g, "1 y medio");
+}
+
+
+function normalizeAccessoryConnectors(text) {
+  return String(text || "")
+    .replace(/\s+con\s+(un|una|unos|unas)\s+(lata|latita|coca|sprite|fanta|gaseosa|bebida|papas|papitas|nuggets)\b/g, " y $1 $2")
+    .replace(/\s+con\s+(lata|latita|coca|sprite|fanta|gaseosa|bebida|papas|papitas|nuggets)\b/g, " y $1");
 }

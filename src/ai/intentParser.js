@@ -4,21 +4,29 @@ import { CUSTOMER_INTENT } from "./intentTypes.js";
 import { validateParsedMessage } from "./schemas.js";
 
 const ADD_KEYWORDS = [
+  "tambien",
+  "también",
   "quiero",
   "agregame",
   "agrega",
   "sumame",
+  "sumale",
   "suma",
   "mandame",
   "manda",
   "haceme",
   "hace",
+  "me haces",
+  "me hacés",
+  "me harias",
+  "me harías",
   "dame",
   "poneme",
   "anotame",
   "va una",
   "va un",
-  "me das"
+  "me das",
+  "con"
 ];
 
 const REMOVE_KEYWORDS = [
@@ -100,8 +108,17 @@ const DELIVERY_KEYWORDS = [
   "delivery",
   "envio",
   "envío",
+  "envio a",
+  "envío a",
+  "con envio",
+  "con envío",
   "enviar",
   "mandar a",
+  "mandalo a",
+  "mandámelo a",
+  "mandamelo a",
+  "me lo mandas a",
+  "me lo mandás a",
   "domicilio",
   "direccion",
   "dirección"
@@ -135,6 +152,14 @@ const FILLER_WORDS = [
   "y",
   "tambien",
   "también",
+  "buenas",
+  "buenos",
+  "dias",
+  "días",
+  "tardes",
+  "noches",
+  "tambien",
+  "también",
   "con",
   "sin"
 ];
@@ -143,6 +168,8 @@ const NUMBER_WORDS = new Map([
   ["un", 1],
   ["una", 1],
   ["uno", 1],
+  ["unas", 1],
+  ["unos", 1],
   ["dos", 2],
   ["tres", 3],
   ["cuatro", 4],
@@ -364,6 +391,7 @@ function parsePaymentMessage({ rawText, normalizedText }) {
   if (
     normalizedText.includes("mercado pago") ||
     normalizedText.includes("mercadopago") ||
+    normalizedText === "mp" ||
     normalizedText.includes(" mp ")
   ) {
     paymentMethod = "MERCADO_PAGO";
@@ -447,7 +475,23 @@ function extractQuantity(normalizedText) {
 }
 
 function extractAddress(normalizedText) {
-  const markers = ["direccion", "dirección", "domicilio", "delivery a", "enviar a", "mandar a"];
+  const markers = [
+    "direccion",
+    "dirección",
+    "domicilio",
+    "delivery a",
+    "envio a",
+    "envío a",
+    "con envio a",
+    "con envío a",
+    "enviar a",
+    "mandar a",
+    "mandalo a",
+    "mandámelo a",
+    "mandamelo a",
+    "me lo mandas a",
+    "me lo mandás a"
+  ];
 
   for (const marker of markers) {
     const normalizedMarker = normalizeText(marker);
