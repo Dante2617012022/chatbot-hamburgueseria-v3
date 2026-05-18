@@ -42,6 +42,7 @@ export async function handleCustomerMessage({
   }
 
   messageText = sanitizeMessageText(messageText);
+  messageText = normalizeCommonCustomerTypos(messageText);
 
   if (!messageText) {
     return {
@@ -689,6 +690,45 @@ function buildProductNotClearReply(parsedMessage) {
   }
 
   return parsedMessage.replyHint || "No estoy seguro de qué producto querés.";
+}
+
+function normalizeCommonCustomerTypos(messageText) {
+  return String(messageText || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\bkiero\b/g, "quiero")
+    .replace(/\bqiero\b/g, "quiero")
+    .replace(/\bqro\b/g, "quiero")
+    .replace(/\bbcon\b/g, "bacon")
+    .replace(/\bchese\b/g, "cheese")
+    .replace(/\bnugget\s*12\b/g, "nuggets x12")
+    .replace(/\bnuggets\s*12\b/g, "nuggets x12")
+    .replace(/\bnugget\s*6\b/g, "nuggets x6")
+    .replace(/\bnuggets\s*6\b/g, "nuggets x6")
+    .replace(/\bamericnas\b/g, "americanas")
+    .replace(/\bcamdiss\b/g, "camdis")
+    .replace(/\btrple\b/g, "triple")
+    .replace(/\btripl\b/g, "triple")
+    .replace(/\bdble\b/g, "doble")
+    .replace(/\bgrnade\b/g, "grande")
+    .replace(/\bgrnde\b/g, "grande")
+    .replace(/\bpapass\b/g, "papas")
+    .replace(/\bcripsy\b/g, "crispy")
+    .replace(/\bmndalo\b/g, "mandalo")
+    .replace(/^t paso dire\s+/g, "delivery a ")
+    .replace(/^te paso dire\s+/g, "delivery a ")
+    .replace(/\bdire\b/g, "direccion")
+    .replace(/\bmpago\b/g, "mercado pago")
+    .replace(/\bmp\b/g, "mp")
+    .replace(/\befvo\b/g, "efectivo")
+    .replace(/\befect\b/g, "efectivo")
+    .replace(/\btransf\b/g, "transferencia")
+    .replace(/\btransfer\b/g, "transferencia")
+    .replace(/^retira$/g, "retiro")
+    .replace(/^lo busco$/g, "lo paso a buscar")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function buildRateLimitReply(rateLimit) {
