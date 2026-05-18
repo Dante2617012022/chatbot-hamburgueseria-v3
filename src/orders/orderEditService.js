@@ -7,6 +7,12 @@ const NUMBER_WORDS = new Map([
   ["un", 1],
   ["una", 1],
   ["uno", 1],
+  ["unas", 1],
+  ["unos", 1],
+  ["otra", 1],
+  ["otro", 1],
+  ["otras", 1],
+  ["otros", 1],
   ["dos", 2],
   ["tres", 3],
   ["cuatro", 4],
@@ -18,11 +24,23 @@ const NUMBER_WORDS = new Map([
   ["diez", 10]
 ]);
 
+const BURGER_SIZE_WORDS = ["simple", "doble", "triple"];
+
 export async function tryHandleAdvancedOrderEdit({ order, messageText }) {
   const normalizedText = normalizeText(messageText);
 
   if (!order?.items || order.items.length === 0) {
     return null;
+  }
+
+  const changeResult = await tryHandleProductChange({
+    order,
+    messageText,
+    normalizedText
+  });
+
+  if (changeResult) {
+    return changeResult;
   }
 
   if (isRepeatLastItemMessage(normalizedText)) {
@@ -65,6 +83,290 @@ export async function tryHandleAdvancedOrderEdit({ order, messageText }) {
   }
 
   return null;
+}
+
+async function tryHandleProductChange({
+  order,
+  messageText,
+  normalizedText
+}) {
+  const changeRequest = parseChangeRequest(normalizedText);
+
+  if (!changeRequest) {
+    return null;
+  }
+
+  const targetProduct = await resolveTargetProductForChange({
+    order,
+    sourceQuery: changeRequest.sourceQuery,
+    targetQuery: changeRequest.targetQuery
+  });
+
+  if (!targetProduct) {
+    return null;
+  }
+
+  const sourceItem = await resolveSourceItemForChange({
+    order,
+    sourceQuery: changeRequest.sourceQuery,
+    targetProduct
+  });
+
+  if (!sourceItem) {
+    return null;
+  }
+
+  const sourceProductId = getItemProductId(sourceItem);
+  const quantity = sourceItem.quantity || 1;
+
+  removeProductFromOrder(order, sourceProductId, {
+    quantity
+  });
+
+  await addProductToOrder(order, targetProduct.id, {
+    quantity
+  });
+
+  return {
+    handled: true,
+    parsedMessage: buildParsedMessage({
+      messageText,
+      intent: "CAMBIAR_PRODUCTO_DEL_PEDIDO",
+      status: "OK",
+      entities: {
+        fromProductId: sourceProductId,
+        toProductId: targetProduct.id,
+        quantity
+      }
+    }),
+    order,
+    reply:
+      `Listo, cambié *${getItemName(sourceItem)}* por *${targetProduct.nombre}*.\n\n` +
+      formatOrderSummary(order)
+  };
+}
+
+function parseChangeRequest(text) {
+  const explicitPatterns = [
+    /^(?:cambiame|cambia|cambiá|cambiala|cambialo)\s+(?:la|el|las|los)?\s*(.+?)\s+por\s+(.+)$/,
+    /^en vez de\s+(.+?)\s+(?:poneme|pone|poné|agregame|agrega|sumame|suma|mandame|manda)\s+(.+)$/,
+    /^no\s+(?:la|el)?\s*(.+?)\s+no,?\s+(?:la|el)?\s*(.+)$/
+  ];
+
+  for (const pattern of explicitPatterns) {
+    const match = text.match(pattern);
+
+    if (match) {
+      return {
+        sourceQuery: cleanChangeQuery(match[1]),
+        targetQuery: cleanChangeQuery(match[2])
+      };
+    }
+  }
+
+  const targetOnlyPatterns = [
+    /^(?:mejor\s+hacela|mejor\s+hacelo|hacela|hacelo)\s+(.+)$/,
+    /^(?:mejor|cambiala por|cambialo por)\s+(.+)$/
+  ];
+
+  for (const pattern of targetOnlyPatterns) {
+    const match = text.match(pattern);
+
+    if (match) {
+      return {
+        sourceQuery: null,
+        targetQuery: cleanChangeQuery(match[1])
+      };
+    }
+  }
+
+  return null;
+}
+
+function cleanChangeQuery(query) {
+  return normalizeText(query)
+    .replace(/^(una|un|uno|la|el|las|los)\s+/, "")
+    .replace(/\b(poneme|pone|poné|agregame|agrega|sumame|suma|mandame|manda)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function resolveTargetProductForChange({
+  order,
+  sourceQuery,
+  targetQuery
+}) {
+  const targetSize = extractBurgerSize(targetQuery);
+
+  if (targetSize && isBareSizeChange(targetQuery)) {
+    const sourceItem = sourceQuery
+      ? await findItemInCurrentOrder(order, sourceQuery)
+      : getLastReplaceableItem(order);
+
+    const inferredQuery = buildSameFamilyQuery(sourceItem, targetSize);
+
+    if (inferredQuery) {
+      const inferredMatch = await findBestProduct(inferredQuery);
+
+      if (inferredMatch.ok && inferredMatch.product) {
+        return inferredMatch.product;
+      }
+    }
+  }
+
+  const directMatch = await findBestProduct(targetQuery);
+
+  if (directMatch.ok && directMatch.product) {
+    return directMatch.product;
+  }
+
+  if (targetSize) {
+    const sourceItem = sourceQuery
+      ? await findItemInCurrentOrder(order, sourceQuery)
+      : getLastReplaceableItem(order);
+
+    const inferredQuery = buildSameFamilyQuery(sourceItem, targetSize);
+
+    if (inferredQuery) {
+      const inferredMatch = await findBestProduct(inferredQuery);
+
+      if (inferredMatch.ok && inferredMatch.product) {
+        return inferredMatch.product;
+      }
+    }
+  }
+
+  return null;
+}
+
+async function resolveSourceItemForChange({
+  order,
+  sourceQuery,
+  targetProduct
+}) {
+  if (sourceQuery) {
+    const explicitItem = await findItemInCurrentOrder(order, sourceQuery);
+
+    if (explicitItem) {
+      return explicitItem;
+    }
+  }
+
+  const sameFamilyItem = findSameFamilyItem(order, targetProduct);
+
+  if (sameFamilyItem) {
+    return sameFamilyItem;
+  }
+
+  const sameCategoryItems = order.items.filter((item) =>
+    getItemCategory(item) === targetProduct.categoria
+  );
+
+  if (sameCategoryItems.length === 1) {
+    return sameCategoryItems[0];
+  }
+
+  return getLastReplaceableItem(order);
+}
+
+function findSameFamilyItem(order, targetProduct) {
+  const targetFamily = getProductFamilyFromValue(
+    `${targetProduct.id} ${targetProduct.nombre}`
+  );
+
+  if (!targetFamily) {
+    return null;
+  }
+
+  return order.items.find((item) =>
+    getProductFamilyFromValue(`${getItemProductId(item)} ${getItemName(item)}`) === targetFamily
+  ) || null;
+}
+
+function buildSameFamilyQuery(item, targetSize) {
+  if (!item || !targetSize) {
+    return null;
+  }
+
+  const family = getProductFamilyFromValue(`${getItemProductId(item)} ${getItemName(item)}`);
+
+  if (!family) {
+    return null;
+  }
+
+  return `${family} ${targetSize}`;
+}
+
+function getProductFamilyFromValue(value) {
+  const text = normalizeText(value);
+
+  if (text.includes("bacon")) {
+    return "bacon";
+  }
+
+  if (text.includes("cheeseburger") || text.includes("cheese")) {
+    return "cheese";
+  }
+
+  if (text.includes("cuarto")) {
+    return "cuarto";
+  }
+
+  if (text.includes("americana")) {
+    return "americana";
+  }
+
+  if (text.includes("big")) {
+    return "big";
+  }
+
+  if (text.includes("crispy")) {
+    return "crispy";
+  }
+
+  if (text.includes("araka")) {
+    return "araka";
+  }
+
+  if (text.includes("onion")) {
+    return "onion";
+  }
+
+  if (text.includes("triple l") || text.includes("triple_l")) {
+    return "triple l";
+  }
+
+  if (text.includes("nuggets")) {
+    return "nuggets";
+  }
+
+  if (text.includes("bebida") || text.includes("gaseosa") || text.includes("coca") || text.includes("lata")) {
+    return "bebida";
+  }
+
+  if (text.includes("papa")) {
+    return "papas";
+  }
+
+  return null;
+}
+
+function extractBurgerSize(text) {
+  const normalized = normalizeText(text);
+
+  return BURGER_SIZE_WORDS.find((size) =>
+    new RegExp(`\\b${size}\\b`).test(normalized)
+  ) || null;
+}
+
+function isBareSizeChange(text) {
+  const normalized = normalizeText(text);
+
+  return BURGER_SIZE_WORDS.includes(normalized);
+}
+
+function getLastReplaceableItem(order) {
+  return order.items.at(-1) || null;
 }
 
 function isKeepOnlyFries(text) {
@@ -252,7 +554,7 @@ async function findItemInCurrentOrder(order, query) {
     return directMatches[0];
   }
 
-  if (text.includes("coca") || text.includes("gaseosa") || text.includes("bebida")) {
+  if (text.includes("coca") || text.includes("gaseosa") || text.includes("bebida") || text.includes("lata")) {
     const drinks = order.items.filter(isDrinkItem);
 
     if (drinks.length === 1) {
