@@ -12,11 +12,42 @@ const FALLBACK_STATUSES = new Set([
   "AMBIGUOUS"
 ]);
 
+const SAFE_AI_FALLBACK_INTENTS = new Set([
+  CUSTOMER_INTENT.VIEW_MENU,
+  CUSTOMER_INTENT.ADD_PRODUCT,
+  CUSTOMER_INTENT.REMOVE_PRODUCT,
+  CUSTOMER_INTENT.ASK_TOTAL,
+  CUSTOMER_INTENT.CHOOSE_PICKUP,
+  CUSTOMER_INTENT.CHOOSE_DELIVERY,
+  CUSTOMER_INTENT.CHOOSE_PAYMENT,
+  CUSTOMER_INTENT.TALK_TO_HUMAN,
+  CUSTOMER_INTENT.UNKNOWN
+]);
+
+const BLOCKED_AI_FALLBACK_INTENTS = new Set([
+  CUSTOMER_INTENT.CONFIRM_ORDER,
+  CUSTOMER_INTENT.CANCEL_ORDER,
+  CUSTOMER_INTENT.MODIFY_PRODUCT,
+  CUSTOMER_INTENT.SEND_ADDRESS,
+  CUSTOMER_INTENT.ASK_HOURS,
+  CUSTOMER_INTENT.ASK_DELIVERY
+]);
+
 export function isAiFallbackEnabled() {
   return (
     process.env.ENABLE_AI_FALLBACK === "true" &&
     Boolean(process.env.OPENAI_API_KEY)
   );
+}
+
+export function getAiFallbackMinConfidence() {
+  const configured = Number(process.env.AI_FALLBACK_MIN_CONFIDENCE || 0.7);
+
+  if (!Number.isFinite(configured)) {
+    return 0.7;
+  }
+
+  return Math.min(1, Math.max(0, configured));
 }
 
 export function shouldUseAiFallback(parsedMessage) {
@@ -36,6 +67,7 @@ export async function parseCustomerMessageWithAiFallback(
   {
     previousParsedMessage = null,
     enabled = isAiFallbackEnabled(),
+    minConfidence = getAiFallbackMinConfidence(),
     modelParser = callOpenAiIntentParser
   } = {}
 ) {
@@ -49,7 +81,7 @@ export async function parseCustomerMessageWithAiFallback(
 
   try {
     const aiResult = await modelParser(rawText);
-    return buildParsedMessageFromAi(rawText, aiResult);
+    return buildParsedMessageFromAi(rawText, aiResult, { minConfidence });
   } catch {
     return null;
   }
@@ -72,16 +104,19 @@ async function callOpenAiIntentParser(rawText) {
     {
       role: "system",
       content:
-        "Sos un parser de mensajes de WhatsApp para una hamburguesería. " +
-        "Tu tarea es devolver solamente JSON válido siguiendo el schema. " +
-        "No inventes productos. Si el cliente pide un producto, devolvé productQuery con el nombre más probable."
+        "Sos un parser estricto de mensajes de WhatsApp para una hamburguesería. " +
+        "Devolvé solamente JSON válido siguiendo el schema. " +
+        "No inventes productos, precios, promociones ni estados. " +
+        "Si el cliente pide un producto, devolvé productQuery con el nombre más probable del catálogo. " +
+        "Si no estás seguro, usá intent NO_ENTENDIDO y confidence baja. " +
+        "No confirmes ni canceles pedidos: esas acciones las maneja el sistema determinístico."
     },
     {
       role: "user",
       content:
         `Mensaje del cliente:\n${rawText}\n\n` +
         `Catálogo disponible para reconocer nombres:\n${catalog}\n\n` +
-        "Interpretá intención, cantidad, producto, entrega, dirección y forma de pago."
+        "Interpretá intención, cantidad, producto, entrega y forma de pago."
     }
   ];
 
@@ -91,7 +126,7 @@ async function callOpenAiIntentParser(rawText) {
   });
 }
 
-async function buildParsedMessageFromAi(rawText, aiResult) {
+async function buildParsedMessageFromAi(rawText, aiResult, { minConfidence }) {
   const normalizedText = normalizeText(rawText);
 
   const intent = isValidCustomerIntent(aiResult?.intent)
@@ -99,6 +134,25 @@ async function buildParsedMessageFromAi(rawText, aiResult) {
     : CUSTOMER_INTENT.UNKNOWN;
 
   const confidence = sanitizeConfidence(aiResult?.confidence);
+
+  if (confidence < minConfidence) {
+    return buildRejectedAiParsedMessage({
+      rawText,
+      normalizedText,
+      status: "AI_LOW_CONFIDENCE",
+      replyHint: "No estoy seguro de haber entendido. ¿Me lo podés escribir de otra forma?"
+    });
+  }
+
+  if (BLOCKED_AI_FALLBACK_INTENTS.has(intent) || !SAFE_AI_FALLBACK_INTENTS.has(intent)) {
+    return buildRejectedAiParsedMessage({
+      rawText,
+      normalizedText,
+      status: "AI_BLOCKED_INTENT",
+      replyHint: "No pude procesar eso automáticamente. Escribime el producto o pedime ayuda humana."
+    });
+  }
+
   const entities = {};
 
   if (
@@ -118,7 +172,7 @@ async function buildParsedMessageFromAi(rawText, aiResult) {
       normalizedText,
       intent,
       confidence: productMatch.confidence || confidence,
-      status: productMatch.ok ? productMatch.status : productMatch.status || "PRODUCT_NOT_FOUND",
+      status: productMatch.ok ? "AI_FALLBACK_PRODUCT_MATCH" : productMatch.status || "PRODUCT_NOT_FOUND",
       entities,
       replyHint: productMatch.ok
         ? null
@@ -137,6 +191,15 @@ async function buildParsedMessageFromAi(rawText, aiResult) {
 
   if (intent === CUSTOMER_INTENT.CHOOSE_PAYMENT) {
     entities.paymentMethod = normalizePaymentMethod(aiResult?.paymentMethod);
+
+    if (!entities.paymentMethod) {
+      return buildRejectedAiParsedMessage({
+        rawText,
+        normalizedText,
+        status: "AI_INVALID_PAYMENT_METHOD",
+        replyHint: "No pude detectar la forma de pago. Puede ser Mercado Pago, efectivo o transferencia."
+      });
+    }
   }
 
   return validateParsedMessage({
@@ -147,6 +210,18 @@ async function buildParsedMessageFromAi(rawText, aiResult) {
     status: intent === CUSTOMER_INTENT.UNKNOWN ? "AI_UNKNOWN" : "AI_FALLBACK",
     entities,
     replyHint: aiResult?.replyHint || null
+  });
+}
+
+function buildRejectedAiParsedMessage({ rawText, normalizedText, status, replyHint }) {
+  return validateParsedMessage({
+    rawText: rawText || "",
+    normalizedText,
+    intent: CUSTOMER_INTENT.UNKNOWN,
+    confidence: 0,
+    status,
+    entities: {},
+    replyHint
   });
 }
 
