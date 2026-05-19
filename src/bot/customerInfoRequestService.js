@@ -2,7 +2,10 @@ import { findBestProduct } from "../menu/productMatcher.js";
 import {
   addProductToOrder,
   clearPendingProductConfirmation,
-  setPendingProductConfirmation
+  removeProductFromOrder,
+  setDeliveryData,
+  setPendingProductConfirmation,
+  updateItemQuantity
 } from "../orders/orderService.js";
 import { formatOrderSummary } from "../orders/orderFormatter.js";
 import { saveOrderSession } from "../storage/sessionStore.js";
@@ -29,6 +32,8 @@ const PURE_GREETING_MESSAGES = new Set([
   "como andas",
   "cómo andás"
 ]);
+
+const PRODUCT_TERMS = /\b(coca|pepsi|sprite|fanta|gaseosa|bebida|lata|papas|papa|nugget|nuggets|cheese|cheeseburger|bacon|big|cuarto|americana|americanas|araka|onion|crispy|camdis)\b/;
 
 const LOCATION_KEYWORDS = [
   "ubicacion",
@@ -60,12 +65,20 @@ const LOCATION_KEYWORDS = [
   "me pasás la ubicación"
 ];
 
-const PRODUCT_TERMS = /\b(coca|pepsi|sprite|fanta|gaseosa|bebida|lata|papas|papa|nugget|nuggets|cheese|cheeseburger|bacon|big|cuarto|americana|americanas|araka|onion|crispy|camdis)\b/;
-
 export async function handleCustomerInfoRequest({ order, messageText }) {
   const normalizedText = normalizeText(messageText);
 
   if (!normalizedText) return null;
+
+  const realFlowResult = await handleRealFlowQuickFixes({
+    order,
+    messageText,
+    normalizedText
+  });
+
+  if (realFlowResult) {
+    return realFlowResult;
+  }
 
   const pendingPriceConfirmationResult = await handlePendingPriceConfirmationMessage({
     order,
@@ -98,6 +111,12 @@ export async function handleCustomerInfoRequest({ order, messageText }) {
     };
   }
 
+  const availabilityQuery = extractAvailabilityQuery(normalizedText);
+
+  if (availabilityQuery) {
+    return buildPriceReply({ order, messageText, priceQuery: availabilityQuery });
+  }
+
   const priceQuery = extractPriceQuery(normalizedText) || extractPriceFollowUpQuery(normalizedText, order);
 
   if (priceQuery) {
@@ -105,6 +124,312 @@ export async function handleCustomerInfoRequest({ order, messageText }) {
   }
 
   return null;
+}
+
+async function handleRealFlowQuickFixes({ order, messageText, normalizedText }) {
+  const deliveryResult = handleDeliveryTypoChoice({ order, messageText, normalizedText });
+
+  if (deliveryResult) {
+    return deliveryResult;
+  }
+
+  const quantityAdjustmentResult = handleQuantityAdjustment({ order, messageText, normalizedText });
+
+  if (quantityAdjustmentResult) {
+    return quantityAdjustmentResult;
+  }
+
+  const removeQuantityResult = handleRemoveQuantityRequest({ order, messageText, normalizedText });
+
+  if (removeQuantityResult) {
+    return removeQuantityResult;
+  }
+
+  return null;
+}
+
+function handleDeliveryTypoChoice({ order, messageText, normalizedText }) {
+  const text = normalizedText.replace(/[?¿!¡.,]+/g, " ").replace(/\s+/g, " ").trim();
+
+  if (![
+    "delivery",
+    "delibery",
+    "delivwry",
+    "delibwry",
+    "envio",
+    "con delivery",
+    "con envio",
+    "a domicilio"
+  ].includes(text)) {
+    return null;
+  }
+
+  setDeliveryData(order, {
+    deliveryType: "DELIVERY",
+    deliveryAddress: null,
+    deliveryZone: null,
+    deliveryCost: 0
+  });
+
+  if (order.customerPhone) {
+    saveOrderSession(order.customerPhone, order);
+  }
+
+  return {
+    parsedMessage: buildSyntheticParsedMessage({
+      messageText,
+      intent: "ELEGIR_DELIVERY_SIN_DIRECCION",
+      entities: {
+        deliveryType: "DELIVERY"
+      }
+    }),
+    order,
+    reply:
+      "Actualicé los datos de tu pedido.\nEntrega: *delivery* sin costo\n\n" +
+      formatOrderSummary(order) +
+      buildNextStepPrompt(order)
+  };
+}
+
+function handleQuantityAdjustment({ order, messageText, normalizedText }) {
+  if (!order?.items?.length) {
+    return null;
+  }
+
+  const adjustment = parseQuantityAdjustment(normalizedText);
+
+  if (!adjustment) {
+    return null;
+  }
+
+  const item = findMatchingItemInOrder(order, adjustment.query);
+
+  if (!item) {
+    return null;
+  }
+
+  const productId = getItemProductId(item);
+  const result = updateItemQuantity(order, productId, adjustment.quantity);
+
+  if (!result.updated) {
+    return null;
+  }
+
+  if (order.customerPhone) {
+    saveOrderSession(order.customerPhone, order);
+  }
+
+  return {
+    parsedMessage: buildSyntheticParsedMessage({
+      messageText,
+      intent: "AJUSTAR_CANTIDAD_PRODUCTO",
+      entities: {
+        productId,
+        quantity: adjustment.quantity
+      }
+    }),
+    order,
+    reply:
+      `Listo, dejé *${adjustment.quantity} x ${getItemName(item)}* en tu pedido.\n\n` +
+      formatOrderSummary(order) +
+      buildNextStepPrompt(order)
+  };
+}
+
+function parseQuantityAdjustment(normalizedText) {
+  const text = normalizedText
+    .replace(/^(ok|okay|dale|bueno|listo)\s+/, "")
+    .replace(/[?¿!¡.,]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  let match = text.match(/^(?:una|un|uno|1)\s+sol[ao]\s+(.+)$/);
+
+  if (match?.[1]) {
+    return {
+      quantity: 1,
+      query: cleanProductQuery(match[1])
+    };
+  }
+
+  match = text.match(/^(.+?)\s+(?:una|un|uno|1)\s+sol[ao]$/);
+
+  if (match?.[1]) {
+    return {
+      quantity: 1,
+      query: cleanProductQuery(match[1])
+    };
+  }
+
+  match = text.match(/^([0-9]+|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(.+?)\s+no\s+([0-9]+|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)$/);
+
+  if (match?.[1] && match?.[2]) {
+    return {
+      quantity: parseQuantityToken(match[1]),
+      query: cleanProductQuery(match[2])
+    };
+  }
+
+  return null;
+}
+
+function handleRemoveQuantityRequest({ order, messageText, normalizedText }) {
+  if (!order?.items?.length) {
+    return null;
+  }
+
+  const parsed = parseRemoveQuantityRequest(normalizedText);
+
+  if (!parsed) {
+    return null;
+  }
+
+  const item = findMatchingItemInOrder(order, parsed.query);
+
+  if (!item) {
+    return null;
+  }
+
+  const productId = getItemProductId(item);
+  const quantity = parsed.quantity || 1;
+  removeProductFromOrder(order, productId, { quantity });
+
+  if (order.customerPhone) {
+    saveOrderSession(order.customerPhone, order);
+  }
+
+  return {
+    parsedMessage: buildSyntheticParsedMessage({
+      messageText,
+      intent: "QUITAR_PRODUCTO_DEL_PEDIDO",
+      entities: {
+        productId,
+        quantity
+      }
+    }),
+    order,
+    reply:
+      `Quité *${quantity} x ${getItemName(item)}* de tu pedido.\n\n` +
+      formatOrderSummary(order) +
+      buildNextStepPrompt(order)
+  };
+}
+
+function parseRemoveQuantityRequest(normalizedText) {
+  const text = normalizedText
+    .replace(/^(ok|okay|dale|bueno|listo)\s+/, "")
+    .replace(/[?¿!¡.,]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const match = text.match(/^(?:restame|resta|sacame|saca|quitame|quita)\s+([0-9]+|un|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+(.+)$/);
+
+  if (!match?.[1] || !match?.[2]) {
+    return null;
+  }
+
+  return {
+    quantity: parseQuantityToken(match[1]),
+    query: cleanProductQuery(match[2])
+  };
+}
+
+function parseQuantityToken(value) {
+  if (/^\d+$/.test(value)) {
+    return Number(value);
+  }
+
+  const numbers = new Map([
+    ["un", 1],
+    ["una", 1],
+    ["uno", 1],
+    ["dos", 2],
+    ["tres", 3],
+    ["cuatro", 4],
+    ["cinco", 5],
+    ["seis", 6],
+    ["siete", 7],
+    ["ocho", 8],
+    ["nueve", 9],
+    ["diez", 10]
+  ]);
+
+  return numbers.get(value) || 1;
+}
+
+function cleanProductQuery(value) {
+  return normalizeText(value)
+    .replace(/\b(de|del|la|el|los|las)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findMatchingItemInOrder(order, query) {
+  const text = normalizeText(query);
+
+  if (!text) {
+    return null;
+  }
+
+  const direct = order.items.filter((item) => {
+    const value = normalizeText(`${getItemProductId(item)} ${getItemName(item)} ${item.category || ""}`);
+    return value.includes(text) || text.includes(value) || tokenMatchesItem(value, text);
+  });
+
+  if (direct.length === 1) {
+    return direct[0];
+  }
+
+  if (/\b(gaseosa|bebida|coca|pepsi|sprite|fanta|lata)\b/.test(text)) {
+    const drinks = order.items.filter((item) =>
+      /\b(gaseosa|bebida|coca|pepsi|sprite|fanta|lata)\b/.test(
+        normalizeText(`${getItemProductId(item)} ${getItemName(item)} ${item.category || ""}`)
+      )
+    );
+
+    if (drinks.length === 1) {
+      return drinks[0];
+    }
+  }
+
+  return direct[0] || null;
+}
+
+function tokenMatchesItem(itemValue, query) {
+  return query.split(/\s+/).some((token) => token.length >= 4 && itemValue.includes(token));
+}
+
+function getItemProductId(item) {
+  return item.productId || item.id || item.product?.id;
+}
+
+function getItemName(item) {
+  return item.name || item.nombre || item.productName || item.product?.nombre || getItemProductId(item);
+}
+
+function extractAvailabilityQuery(normalizedText) {
+  const text = normalizedText.replace(/[?¿!¡.,]+/g, " ").replace(/\s+/g, " ").trim();
+
+  if (!/\b(venden|vende|tenes|tenés|tienen|hay)\b/.test(text)) {
+    return null;
+  }
+
+  if (/\b(quiero|agrega|agregame|sumame|preparame|dame|mandame)\b/.test(text)) {
+    return null;
+  }
+
+  const cleaned = text
+    .replace(/^(venden|vende|tenes|tenés|tienen|hay)\s+/, " ")
+    .replace(/\s+(venden|vende|tenes|tenés|tienen|hay)$/g, " ")
+    .replace(/\b(la|el|las|los|un|una|uno|de|del|porfa|por favor)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned || !PRODUCT_TERMS.test(cleaned)) {
+    return null;
+  }
+
+  return cleaned;
 }
 
 async function handlePendingPriceConfirmationMessage({
