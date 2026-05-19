@@ -28,7 +28,7 @@ async function assertAddProduct(messageText, { quantity, productId }) {
 test("1 - frases con preparar", async () => {
   await assertAddProduct("hola me preparan 2 americanas triples", {
     quantity: 2,
-    productId: "americana_2_0_triple"
+    productId: "americana_20_triple"
   });
 
   await assertAddProduct("me preparas una onion doble", {
@@ -141,6 +141,6 @@ test("5 - flujo real agrega americanas triples", async () => {
   assert.equal(result.parsedMessage.intent, CUSTOMER_INTENT.ADD_PRODUCT);
   assert.match(result.reply, /2 x Americana 2\.0 triple/i);
   assert.equal(result.order.items.length, 1);
-  assert.equal(result.order.items[0].productId, "americana_2_0_triple");
+  assert.equal(result.order.items[0].productId, "americana_20_triple");
   assert.equal(result.order.items[0].quantity, 2);
 });

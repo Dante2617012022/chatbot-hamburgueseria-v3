@@ -21,19 +21,38 @@ const ADD_KEYWORDS = [
   "quiero",
   "agregame",
   "agrega",
+  "agregale",
   "sumame",
   "sumale",
   "suma",
   "mandame",
   "manda",
+  "preparame",
+  "prepárame",
+  "me preparan",
+  "me preparas",
+  "me preparás",
+  "armame",
+  "ármame",
+  "me arman",
+  "me armas",
+  "me armás",
   "haceme",
   "hace",
+  "me hacen",
   "me haces",
   "me hacés",
   "me harias",
   "me harías",
   "dame",
   "poneme",
+  "pone",
+  "poné",
+  "ponele",
+  "ponle",
+  "añade",
+  "anade",
+  "adiciona",
   "anotame",
   "va una",
   "va un",
@@ -186,6 +205,9 @@ const FILLER_WORDS = [
   "y",
   "tambien",
   "también",
+  "hola",
+  "holis",
+  "olis",
   "buenas",
   "buenos",
   "dias",
@@ -503,13 +525,65 @@ async function findProductWithFallback(productQuery, normalizedText) {
     return productMatch;
   }
 
+  const singularProductQuery = singularizeProductQuery(productQuery);
+
+  if (singularProductQuery && singularProductQuery !== productQuery) {
+    const singularProductMatch = await findBestProduct(singularProductQuery);
+
+    if (singularProductMatch.ok || singularProductMatch.status === "PRODUCT_UNAVAILABLE") {
+      return singularProductMatch;
+    }
+  }
+
   const fallbackMatch = await findBestProduct(normalizedText);
 
   if (fallbackMatch.ok || fallbackMatch.status === "PRODUCT_UNAVAILABLE") {
     return fallbackMatch;
   }
 
+  const singularNormalizedText = singularizeProductQuery(normalizedText);
+
+  if (singularNormalizedText && singularNormalizedText !== normalizedText) {
+    const singularFallbackMatch = await findBestProduct(singularNormalizedText);
+
+    if (singularFallbackMatch.ok || singularFallbackMatch.status === "PRODUCT_UNAVAILABLE") {
+      return singularFallbackMatch;
+    }
+  }
+
   return productMatch;
+}
+
+function singularizeProductQuery(value) {
+  return normalizeText(value)
+    .split(" ")
+    .map((word) => {
+      if (["papas", "nuggets"].includes(word)) {
+        return word;
+      }
+
+      const variantMap = new Map([
+        ["simples", "simple"],
+        ["dobles", "doble"],
+        ["triples", "triple"]
+      ]);
+
+      if (variantMap.has(word)) {
+        return variantMap.get(word);
+      }
+
+      if (word.endsWith("es") && word.length > 4) {
+        return word.slice(0, -2);
+      }
+
+      if (word.endsWith("s") && word.length > 3) {
+        return word.slice(0, -1);
+      }
+
+      return word;
+    })
+    .join(" ")
+    .trim();
 }
 
 function cleanProductQuery(normalizedText, actionKeywords) {
