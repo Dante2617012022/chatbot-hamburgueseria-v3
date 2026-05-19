@@ -58,7 +58,7 @@ test("3 - correccion simple no doble no suma otra doble", async () => {
   await send(phone, "quiero camdis americana");
   const result = await send(phone, "americana simple no doble");
 
-  assert.equal(result.parsedMessage.intent, "CAMBIAR_PRODUCTO_DEL_PEDIDO");
+  assert.match(result.reply, /Americana 2\.0 simple/i);
   assert.equal(result.order.items.length, 1);
   assert.equal(result.order.items[0].productId, "americana_20_simple");
   assert.doesNotMatch(result.reply, /2 x Americana 2\.0 doble/i);
@@ -68,6 +68,27 @@ test("4 - americana simple no doble como primer mensaje agrega simple", async ()
   resetSessionsForTests();
 
   const result = await send("4020000004", "americana simple no doble");
+
+  assert.match(result.reply, /1 x Americana 2\.0 simple/i);
+  assert.equal(result.order.items.length, 1);
+  assert.equal(result.order.items[0].productId, "americana_20_simple");
+});
+
+test("5 - quiero camdis americana no asume doble", async () => {
+  resetSessionsForTests();
+
+  const result = await send("4020000005", "quiero camdis americana");
+
+  assert.match(result.reply, /1 x Americana 2\.0 simple/i);
+  assert.equal(result.order.items.length, 1);
+  assert.equal(result.order.items[0].productId, "americana_20_simple");
+  assert.equal(result.order.total, 8500);
+});
+
+test("6 - hamburguesa americana sin variante no asume doble", async () => {
+  resetSessionsForTests();
+
+  const result = await send("4020000006", "quiero una hamburguesa americana");
 
   assert.match(result.reply, /1 x Americana 2\.0 simple/i);
   assert.equal(result.order.items.length, 1);
