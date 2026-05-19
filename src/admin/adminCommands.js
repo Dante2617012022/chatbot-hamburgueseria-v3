@@ -6,6 +6,7 @@ import {
   setBotPaused
 } from "../storage/settingsRepository.js";
 import { getPendingLocalNotifications } from "../notifications/notificationRepository.js";
+import { getAiMessageMetrics } from "../storage/messageRepository.js";
 import { formatPrice } from "../menu/menuFormatter.js";
 import { BUSINESS_OPEN_OVERRIDE, formatBusinessAvailability, setBusinessOpenOverride } from "../business/businessHoursService.js";
 import { formatStockStatus, setProductAvailabilityByQuery } from "../menu/stockService.js";
@@ -87,6 +88,9 @@ export async function handleAdminCommand({
     case "notificaciones":
       return adminReply(formatPendingNotifications());
 
+    case "ia":
+      return adminReply(formatAiMetrics());
+
     case "preparar":
     case "listo":
     case "camino":
@@ -155,6 +159,7 @@ function formatAdminHelp() {
     "/admin estado",
     "/admin pedidos",
     "/admin notificaciones",
+    "/admin ia",
     "/admin stock",
     "/admin zonas",
     "/admin agotado <producto>",
@@ -211,6 +216,45 @@ function formatActiveOrders() {
   }
 
   return lines.join("\n").trim();
+}
+
+function formatAiMetrics() {
+  const metrics = getAiMessageMetrics();
+
+  const lines = [
+    "*Métricas IA*",
+    "",
+    `Eventos IA: ${metrics.aiTotal}`,
+    `No entendidos: ${metrics.noEntendidoTotal}`,
+    ""
+  ];
+
+  lines.push("*Por resolución:*");
+
+  const resolutionEntries = Object.entries(metrics.byResolution);
+
+  if (resolutionEntries.length === 0) {
+    lines.push("- sin eventos");
+  } else {
+    for (const [resolution, count] of resolutionEntries) {
+      lines.push(`- ${resolution}: ${count}`);
+    }
+  }
+
+  lines.push("");
+  lines.push("*Por status:*");
+
+  const statusEntries = Object.entries(metrics.byStatus);
+
+  if (statusEntries.length === 0) {
+    lines.push("- sin eventos");
+  } else {
+    for (const [status, count] of statusEntries) {
+      lines.push(`- ${status}: ${count}`);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 function formatPendingNotifications() {
