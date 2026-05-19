@@ -49,6 +49,8 @@ test("4 - combina notas y extras como observacion sin cambiar precio", async () 
 
   assert.match(result.reply, /1 x Bacon cheese doble/i);
   assert.match(result.reply, /Notas: sin salsa, extra queso/i);
+  assert.doesNotMatch(result.reply, /salsa extra/i);
+  assert.deepEqual(result.order.items[0].notes, ["sin salsa", "extra queso"]);
   assert.equal(result.order.items[0].unitPrice, 10000);
   assert.equal(result.order.total, 10000);
 });
@@ -76,4 +78,16 @@ test("6 - multi producto aplica nota global a los productos del mensaje", async 
   assert.equal(result.order.items.length, 2);
   assert.deepEqual(result.order.items[0].notes, ["sin cebolla"]);
   assert.deepEqual(result.order.items[1].notes, ["sin cebolla"]);
+});
+
+test("7 - salsa extra sigue funcionando cuando se pide explícitamente", () => {
+  const notes = extractItemNotes("quiero una americana doble con salsa extra");
+
+  assert.deepEqual(notes, ["salsa extra"]);
+});
+
+test("8 - sin salsa extra queso no genera salsa extra", () => {
+  const notes = extractItemNotes("preparame una bacon doble sin salsa extra queso");
+
+  assert.deepEqual(notes, ["sin salsa", "extra queso"]);
 });
