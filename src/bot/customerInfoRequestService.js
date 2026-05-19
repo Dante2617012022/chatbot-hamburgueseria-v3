@@ -33,7 +33,7 @@ const PURE_GREETING_MESSAGES = new Set([
   "cómo andás"
 ]);
 
-const PRODUCT_TERMS = /\b(coca|pepsi|sprite|fanta|gaseosa|bebida|lata|papas|papa|nugget|nuggets|cheese|cheeseburger|bacon|big|cuarto|americana|americanas|araka|onion|crispy|camdis)\b/;
+const PRODUCT_TERMS = /\b(coca|pepsi|sprite|fanta|gaseosa|gaseosas|bebida|bebidas|lata|latas|papas|papa|nugget|nuggets|cheese|cheeseburger|bacon|big|cuarto|americana|americanas|araka|onion|crispy|camdis)\b/;
 
 const LOCATION_KEYWORDS = [
   "ubicacion",
@@ -111,16 +111,16 @@ export async function handleCustomerInfoRequest({ order, messageText }) {
     };
   }
 
-  const availabilityQuery = extractAvailabilityQuery(normalizedText);
-
-  if (availabilityQuery) {
-    return buildPriceReply({ order, messageText, priceQuery: availabilityQuery });
-  }
-
   const priceQuery = extractPriceQuery(normalizedText) || extractPriceFollowUpQuery(normalizedText, order);
 
   if (priceQuery) {
     return buildPriceReply({ order, messageText, priceQuery });
+  }
+
+  const availabilityQuery = extractAvailabilityQuery(normalizedText);
+
+  if (availabilityQuery) {
+    return buildPriceReply({ order, messageText, priceQuery: availabilityQuery });
   }
 
   return null;
@@ -359,13 +359,19 @@ function parseQuantityToken(value) {
 
 function cleanProductQuery(value) {
   return normalizeText(value)
+    .replace(/\b(gaseosas|bebidas|latas)\b/g, (match) => {
+      if (match === "gaseosas") return "gaseosa";
+      if (match === "bebidas") return "bebida";
+      if (match === "latas") return "lata";
+      return match;
+    })
     .replace(/\b(de|del|la|el|los|las)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 function findMatchingItemInOrder(order, query) {
-  const text = normalizeText(query);
+  const text = cleanProductQuery(query);
 
   if (!text) {
     return null;
@@ -410,6 +416,10 @@ function getItemName(item) {
 function extractAvailabilityQuery(normalizedText) {
   const text = normalizedText.replace(/[?¿!¡.,]+/g, " ").replace(/\s+/g, " ").trim();
 
+  if (looksLikePriceQuestion(text)) {
+    return null;
+  }
+
   if (!/\b(venden|vende|tenes|tenés|tienen|hay)\b/.test(text)) {
     return null;
   }
@@ -418,18 +428,30 @@ function extractAvailabilityQuery(normalizedText) {
     return null;
   }
 
-  const cleaned = text
-    .replace(/^(venden|vende|tenes|tenés|tienen|hay)\s+/, " ")
-    .replace(/\s+(venden|vende|tenes|tenés|tienen|hay)$/g, " ")
-    .replace(/\b(la|el|las|los|un|una|uno|de|del|porfa|por favor)\b/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const cleaned = cleanProductQuery(
+    text
+      .replace(/^(venden|vende|tenes|tenés|tienen|hay)\s+/, " ")
+      .replace(/\s+(venden|vende|tenes|tenés|tienen|hay)$/g, " ")
+      .replace(/\b(la|el|las|los|un|una|uno|de|del|porfa|por favor)\b/g, " ")
+  );
 
   if (!cleaned || !PRODUCT_TERMS.test(cleaned)) {
     return null;
   }
 
-  return cleaned;
+  return normalizeAvailabilityProductQuery(cleaned);
+}
+
+function normalizeAvailabilityProductQuery(query) {
+  if (["gaseosa", "bebida", "coca", "pepsi", "sprite", "fanta"].includes(query)) {
+    return "gaseosa grande";
+  }
+
+  if (query === "lata") {
+    return "lata";
+  }
+
+  return query;
 }
 
 async function handlePendingPriceConfirmationMessage({
