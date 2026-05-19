@@ -1,0 +1,221 @@
+export const LEGACY_ADD_KEYWORDS = [
+  "te puedo encargar",
+  "puedo encargarte",
+  "puedo encargar",
+  "te encargo",
+  "encargame",
+  "encargar",
+  "te voy a pedir",
+  "te quiero pedir",
+  "voy a pedir",
+  "quiero pedir",
+  "voy a querer",
+  "preparame",
+  "prepárame",
+  "me preparas",
+  "me preparás",
+  "me armás",
+  "me armas"
+];
+
+export const LEGACY_REMOVE_KEYWORDS = [
+  "restale",
+  "restame",
+  "sacale",
+  "sacalo",
+  "sacala",
+  "bajale",
+  "quitalo",
+  "quitala",
+  "eliminalo",
+  "eliminala",
+  "quita eso",
+  "saca eso",
+  "sin la",
+  "sin el",
+  "sin las",
+  "sin los"
+];
+
+export const LEGACY_MENU_KEYWORDS = [
+  "menue",
+  "menú",
+  "catalogo",
+  "catálogo",
+  "listado",
+  "lista",
+  "productos",
+  "producto",
+  "oferta",
+  "ofertas",
+  "promocion",
+  "promoción",
+  "promos",
+  "opcion",
+  "opción",
+  "platos",
+  "plato",
+  "comidas",
+  "bebidas",
+  "ver menu",
+  "ver menú",
+  "quiero ver el menu",
+  "quiero ver el menú",
+  "pasame el menu",
+  "pasame el menú",
+  "dame el menu",
+  "dame el menú",
+  "me das el menu",
+  "me das el menú",
+  "me pasas el menu",
+  "me pasas el menú",
+  "dejame el menu",
+  "dejame el menú",
+  "me pasas la carta",
+  "quiero la carta",
+  "mostrar menu",
+  "mostrar menú",
+  "mostrar carta",
+  "menues",
+  "que ofrecen",
+  "qué ofrecen",
+  "que tienen",
+  "qué tienen",
+  "que venden",
+  "qué venden",
+  "pasa la carta",
+  "pasá la carta",
+  "pasa el listado"
+];
+
+export const LEGACY_TOTAL_KEYWORDS = [
+  "cuanto me queda",
+  "cuánto me queda",
+  "cuanto voy",
+  "cuánto voy",
+  "cuanto seria todo",
+  "cuánto sería todo"
+];
+
+export const LEGACY_CONFIRM_OR_PAY_KEYWORDS = [
+  "quiero pagar",
+  "como pago",
+  "cómo pago",
+  "pasame el link",
+  "mandame el link",
+  "generame el link",
+  "generá el link",
+  "cobramelo",
+  "cobrámelo",
+  "cobrame",
+  "cobrame ya",
+  "link de pago",
+  "finaliza",
+  "finalizá",
+  "finalizalo",
+  "terminamos",
+  "ya esta",
+  "ya está"
+];
+
+export const LEGACY_CANCEL_KEYWORDS = [
+  "borra todo",
+  "borrá todo",
+  "anula todo",
+  "anulá todo",
+  "cancelar todo",
+  "cancela todo",
+  "cancelá todo",
+  "cancelar el pedido",
+  "cancelá el pedido",
+  "nuevo pedido",
+  "empeza de cero",
+  "empezá de cero",
+  "empecemos de cero",
+  "resetear pedido",
+  "resetear todo",
+  "reiniciar",
+  "reiniciar pedido",
+  "limpiar pedido",
+  "pedido nuevo"
+];
+
+export const LEGACY_HUMAN_KEYWORDS = [
+  "alguien",
+  "asesor",
+  "operador",
+  "atendedor",
+  "atencion humana",
+  "atención humana",
+  "atencion personal",
+  "atención personal",
+  "quiero hablar con alguien",
+  "quiero hablar con una persona",
+  "quiero un humano",
+  "quiero un asesor",
+  "quiero un operador",
+  "necesito un humano",
+  "necesito un operador",
+  "necesito hablar con alguien"
+];
+
+export const LEGACY_LOCATION_KEYWORDS = [
+  "ubicacion",
+  "ubicación",
+  "donde estan",
+  "dónde están",
+  "donde queda",
+  "dónde queda",
+  "direccion exacta",
+  "dirección exacta",
+  "ubicacion exacta",
+  "ubicación exacta",
+  "ubicacion del local",
+  "ubicación del local",
+  "como llego",
+  "cómo llego",
+  "como ir",
+  "como llego al local",
+  "como los encuentro",
+  "cómo los encuentro",
+  "pasa direccion",
+  "pasa dirección",
+  "me pasas la direccion",
+  "me pasás la dirección"
+];
+
+export const LEGACY_PICKUP_KEYWORDS = [
+  "lo paso a buscar",
+  "lo busco",
+  "busco",
+  "buscar",
+  "retiro por local",
+  "retirar por local"
+];
+
+export const LEGACY_PAYMENT_KEYWORDS = [
+  "pago en efectivo",
+  "efectivo cuando llegue",
+  "pago al recibir",
+  "pago cuando llegue",
+  "pago al retirar",
+  "pago con mp",
+  "pago mercado",
+  "mercado",
+  "transferir",
+  "transfiero"
+];
+
+export const LEGACY_NUMBER_WORDS = new Map([
+  ["once", 11],
+  ["doce", 12],
+  ["trece", 13],
+  ["catorce", 14],
+  ["quince", 15],
+  ["dieciseis", 16],
+  ["dieciséis", 16],
+  ["diecisiete", 17],
+  ["dieciocho", 18],
+  ["diecinueve", 19],
+  ["veinte", 20]
+]);
