@@ -87,3 +87,34 @@ test("7 - direccion con numero no se confunde con ubicacion del local", async ()
   assert.notEqual(result.parsedMessage.intent, "CONSULTAR_UBICACION_LOCAL");
   assert.equal(result.order.deliveryAddress, "centenario 49");
 });
+
+test("8 - si confirma despues de consultar precio agrega ese producto", async () => {
+  resetSessionsForTests();
+
+  const phone = "4000000008";
+
+  const price = await send(phone, "cuanto sale la americana doble");
+  assert.equal(price.parsedMessage.intent, "CONSULTAR_PRECIO_PRODUCTO");
+  assert.equal(price.order.items.length, 0);
+
+  const confirmation = await send(phone, "si");
+
+  assert.equal(confirmation.parsedMessage.intent, "CONFIRMAR_SUGERENCIA_PRODUCTO");
+  assert.match(confirmation.reply, /Americana 2\.0 doble/i);
+  assert.equal(confirmation.order.items.length, 1);
+  assert.equal(confirmation.order.items[0].productId, "americana_20_doble");
+});
+
+test("9 - si confirma precio de crispy triple agrega ese producto", async () => {
+  resetSessionsForTests();
+
+  const phone = "4000000009";
+
+  await send(phone, "precio de la crispy triple");
+  const confirmation = await send(phone, "si");
+
+  assert.equal(confirmation.parsedMessage.intent, "CONFIRMAR_SUGERENCIA_PRODUCTO");
+  assert.match(confirmation.reply, /Camdis crispy triple/i);
+  assert.equal(confirmation.order.items.length, 1);
+  assert.equal(confirmation.order.items[0].productId, "camdis_crispy_triple");
+});
