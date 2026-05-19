@@ -4,6 +4,10 @@ import { parseMultiProductMessage } from "../ai/multiProductParser.js";
 import { tryHandleAdvancedOrderEdit } from "../orders/orderEditService.js";
 import { extractNotesAndCleanMessage } from "../orders/itemNotesService.js";
 import { handleCustomerInfoRequest } from "./customerInfoRequestService.js";
+import {
+  handleMultipleProductClarificationRequest,
+  handlePendingMultiProductClarification
+} from "./multiProductClarificationService.js";
 import { parseCustomerMessageWithAiFallback, shouldUseAiFallback } from "../ai/aiFallbackParser.js";
 import { handleAdminCommand, isAdminCommand, shouldBlockCustomerMessages } from "../admin/adminCommands.js";
 import { CUSTOMER_INTENT } from "../ai/intentTypes.js";
@@ -218,6 +222,17 @@ export async function handleCustomerMessage({
     return standaloneDeliveryChoiceResult;
   }
 
+  const pendingMultiProductClarificationResult = await handlePendingMultiProductClarification({
+    customerPhone,
+    order,
+    messageText,
+    buildNextStepPrompt
+  });
+
+  if (pendingMultiProductClarificationResult) {
+    return pendingMultiProductClarificationResult;
+  }
+
   const pendingConfirmationResult = await handlePendingProductConfirmation({
     customerPhone,
     order,
@@ -298,6 +313,16 @@ export async function handleCustomerMessage({
       order,
       reply: advancedOrderEditResult.reply
     };
+  }
+
+  const multiProductClarificationResult = await handleMultipleProductClarificationRequest({
+    customerPhone,
+    order,
+    messageText
+  });
+
+  if (multiProductClarificationResult) {
+    return multiProductClarificationResult;
   }
 
   const multiProductMessage = await parseMultiProductMessage(messageText);
