@@ -31,6 +31,7 @@ import { getBusinessAvailability } from "../business/businessHoursService.js";
 import { findDeliveryZoneByText } from "../delivery/deliveryZoneService.js";
 import { sanitizeMessageText } from "../security/inputSanitizer.js";
 import { checkRateLimit } from "../security/rateLimiter.js";
+import { isSupervisedPilotModeEnabled } from "../storage/settingsRepository.js";
 import {
   clearOrderSession,
   getOrCreateOrderSession,
@@ -477,11 +478,23 @@ export async function handleCustomerMessage({
       return {
         parsedMessage,
         order,
-        reply:
-          parsedMessage.replyHint ||
-          "No entendí bien tu mensaje. Podés pedirme el menú o escribirme qué producto querés."
+        reply: buildUnknownMessageReply(parsedMessage)
       };
   }
+}
+
+function buildUnknownMessageReply(parsedMessage) {
+  if (isSupervisedPilotModeEnabled()) {
+    return (
+      "No estoy seguro de haber entendido tu mensaje. " +
+      "Como estamos en modo piloto supervisado, te paso con una persona para revisión manual."
+    );
+  }
+
+  return (
+    parsedMessage.replyHint ||
+    "No entendí bien tu mensaje. Podés pedirme el menú o escribirme qué producto querés."
+  );
 }
 
 function buildPartialMultiProductWarning(failedItems = []) {
