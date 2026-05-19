@@ -3,7 +3,9 @@ import { getAllSessions } from "../storage/sessionStore.js";
 import {
   getBotStatus,
   isBotPaused,
-  setBotPaused
+  isSupervisedPilotModeEnabled,
+  setBotPaused,
+  setSupervisedPilotMode
 } from "../storage/settingsRepository.js";
 import { getPendingLocalNotifications } from "../notifications/notificationRepository.js";
 import { getAiMessageMetrics } from "../storage/messageRepository.js";
@@ -91,6 +93,9 @@ export async function handleAdminCommand({
     case "ia":
       return adminReply(formatAiMetrics());
 
+    case "piloto":
+      return adminReply(handlePilotModeCommand(command.args));
+
     case "preparar":
     case "listo":
     case "camino":
@@ -127,6 +132,22 @@ function adminReply(reply) {
   };
 }
 
+function handlePilotModeCommand(args) {
+  const action = String(args?.[0] || "").toLowerCase();
+
+  if (["activar", "on", "si", "sí"].includes(action)) {
+    setSupervisedPilotMode(true);
+    return "Modo piloto supervisado activado. Cuando el bot no entienda algo, va a derivar a una persona para revisión manual.";
+  }
+
+  if (["desactivar", "off", "no"].includes(action)) {
+    setSupervisedPilotMode(false);
+    return "Modo piloto supervisado desactivado.";
+  }
+
+  return `Piloto supervisado: ${isSupervisedPilotModeEnabled() ? "ACTIVADO" : "DESACTIVADO"}\n\nUsá /admin piloto activar o /admin piloto desactivar.`;
+}
+
 async function handleStockChange(args, available) {
   const query = args.join(" ").trim();
 
@@ -160,6 +181,8 @@ function formatAdminHelp() {
     "/admin pedidos",
     "/admin notificaciones",
     "/admin ia",
+    "/admin piloto activar",
+    "/admin piloto desactivar",
     "/admin stock",
     "/admin zonas",
     "/admin agotado <producto>",
@@ -186,6 +209,7 @@ function formatBotStatus() {
     "*Estado del bot*",
     "",
     `Estado: ${botStatus.status}`,
+    `Piloto supervisado: ${botStatus.supervisedPilotMode ? "ACTIVADO" : "DESACTIVADO"}`,
     `Pedidos activos: ${sessions.length}`,
     `Notificaciones pendientes: ${pendingNotifications.length}`
   ].join("\n");

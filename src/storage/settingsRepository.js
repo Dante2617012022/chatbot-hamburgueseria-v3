@@ -48,9 +48,21 @@ export function isBotPaused() {
   return getSetting("BOT_PAUSED", "false") === "true";
 }
 
+export function setSupervisedPilotMode(isEnabled) {
+  return setSetting("SUPERVISED_PILOT_MODE", isEnabled ? "true" : "false");
+}
+
+export function isSupervisedPilotModeEnabled() {
+  return getSetting("SUPERVISED_PILOT_MODE", "false") === "true";
+}
+
+
 export function getBotStatus() {
+  const supervisedPilotMode = isSupervisedPilotModeEnabled();
+
   return {
     paused: isBotPaused(),
+    supervisedPilotMode,
     status: isBotPaused() ? "PAUSADO" : "ACTIVO"
   };
 }
