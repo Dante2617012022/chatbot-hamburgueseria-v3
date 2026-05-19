@@ -1571,7 +1571,23 @@ function handlePaymentReceiptMessage({
 
 function isPaymentLinkRequest(text) {
   return (
-    /\b(pasame|pasar|mandame|manda|enviame|envia)\b.*\b(link|pago|pagar)\b/.test(text) ||
+    [
+      "quiero pagar",
+      "pagar",
+      "cobrame",
+      "cobrame ya",
+      "cobramelo",
+      "cobrámelo",
+      "finaliza",
+      "finalizá",
+      "finalizalo",
+      "terminamos",
+      "ya esta",
+      "ya está",
+      "como pago",
+      "cómo pago"
+    ].includes(text) ||
+    /\b(pasame|pasar|mandame|manda|enviame|envia|genera|generá)\b.*\b(link|pago|pagar)\b/.test(text) ||
     /\b(dame|necesito|quiero)\b.*\b(pagar|link|pago)\b/.test(text) ||
     /\b(para\s+pagar|link\s+de\s+pago|link\s+mercado\s+pago)\b/.test(text)
   );
@@ -1636,7 +1652,10 @@ function isClearOrderRequest(messageText) {
     "quita todo",
     "quitame todo",
     "elimina todo",
-    "eliminame todo"
+    "eliminame todo",
+    "nuevo pedido",
+    "pedido nuevo",
+    "limpiar pedido"
   ].includes(text);
 }
 
