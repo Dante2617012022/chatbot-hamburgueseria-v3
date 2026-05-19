@@ -2,6 +2,18 @@ import { findBestProduct } from "../menu/productMatcher.js";
 import { normalizeText } from "../utils/textNormalizer.js";
 import { CUSTOMER_INTENT } from "./intentTypes.js";
 import { validateParsedMessage } from "./schemas.js";
+import {
+  LEGACY_ADD_KEYWORDS,
+  LEGACY_REMOVE_KEYWORDS,
+  LEGACY_MENU_KEYWORDS,
+  LEGACY_TOTAL_KEYWORDS,
+  LEGACY_CONFIRM_OR_PAY_KEYWORDS,
+  LEGACY_CANCEL_KEYWORDS,
+  LEGACY_HUMAN_KEYWORDS,
+  LEGACY_PICKUP_KEYWORDS,
+  LEGACY_PAYMENT_KEYWORDS,
+  LEGACY_NUMBER_WORDS
+} from "./legacyPhraseDictionary.js";
 
 const ADD_KEYWORDS = [
   "tambien",
@@ -26,7 +38,8 @@ const ADD_KEYWORDS = [
   "va una",
   "va un",
   "me das",
-  "con"
+  "con",
+  ...LEGACY_ADD_KEYWORDS
 ];
 
 const REMOVE_KEYWORDS = [
@@ -38,7 +51,8 @@ const REMOVE_KEYWORDS = [
   "elimina",
   "borrame",
   "borra",
-  "no quiero"
+  "no quiero",
+  ...LEGACY_REMOVE_KEYWORDS
 ];
 
 const MENU_KEYWORDS = [
@@ -49,7 +63,8 @@ const MENU_KEYWORDS = [
   "que tenes",
   "que hay",
   "opciones",
-  "hamburguesas"
+  "hamburguesas",
+  ...LEGACY_MENU_KEYWORDS
 ];
 
 const TOTAL_KEYWORDS = [
@@ -59,7 +74,8 @@ const TOTAL_KEYWORDS = [
   "cuanto va",
   "cuanto llevo",
   "precio final",
-  "cuanto sale todo"
+  "cuanto sale todo",
+  ...LEGACY_TOTAL_KEYWORDS
 ];
 
 const CONFIRM_KEYWORDS = [
@@ -72,7 +88,8 @@ const CONFIRM_KEYWORDS = [
   "ok",
   "listo",
   "si",
-  "perfecto"
+  "perfecto",
+  ...LEGACY_CONFIRM_OR_PAY_KEYWORDS
 ];
 
 const CANCEL_KEYWORDS = [
@@ -91,7 +108,8 @@ const CANCEL_KEYWORDS = [
   "empezá de nuevo",
   "arrancar de nuevo",
   "borra todo",
-  "vaciar pedido"
+  "vaciar pedido",
+  ...LEGACY_CANCEL_KEYWORDS
 ];
 
 const HUMAN_KEYWORDS = [
@@ -101,7 +119,8 @@ const HUMAN_KEYWORDS = [
   "atendente",
   "empleado",
   "quiero hablar",
-  "hablar con alguien"
+  "hablar con alguien",
+  ...LEGACY_HUMAN_KEYWORDS
 ];
 
 const PICKUP_KEYWORDS = [
@@ -111,7 +130,8 @@ const PICKUP_KEYWORDS = [
   "paso a buscar",
   "por el local",
   "busco por el local",
-  "lo retiro"
+  "lo retiro",
+  ...LEGACY_PICKUP_KEYWORDS
 ];
 
 const DELIVERY_KEYWORDS = [
@@ -144,7 +164,8 @@ const PAYMENT_KEYWORDS = [
   "efectivo",
   "transferencia",
   "pago con",
-  "pagar con"
+  "pagar con",
+  ...LEGACY_PAYMENT_KEYWORDS
 ];
 
 const FILLER_WORDS = [
@@ -195,7 +216,8 @@ const NUMBER_WORDS = new Map([
   ["siete", 7],
   ["ocho", 8],
   ["nueve", 9],
-  ["diez", 10]
+  ["diez", 10],
+  ...LEGACY_NUMBER_WORDS
 ]);
 
 export async function parseCustomerMessage(rawText) {
@@ -415,17 +437,25 @@ function parsePaymentMessage({ rawText, normalizedText }) {
     normalizedText.includes("mercado pago") ||
     normalizedText.includes("mercadopago") ||
     normalizedText === "mp" ||
-    normalizedText.includes(" mp ")
+    normalizedText.includes(" mp ") ||
+    normalizedText.includes("pago mercado") ||
+    normalizedText === "mercado"
   ) {
     paymentMethod = "MERCADO_PAGO";
   } else if (
     normalizedText.includes("efectivo") ||
     normalizedText.includes("pago al retirar") ||
     normalizedText.includes("pagar al retirar") ||
-    normalizedText.includes("pago cuando retiro")
+    normalizedText.includes("pago cuando retiro") ||
+    normalizedText.includes("pago al recibir") ||
+    normalizedText.includes("pago cuando llegue")
   ) {
     paymentMethod = "EFECTIVO";
-  } else if (normalizedText.includes("transferencia")) {
+  } else if (
+    normalizedText.includes("transferencia") ||
+    normalizedText.includes("transferir") ||
+    normalizedText.includes("transfiero")
+  ) {
     paymentMethod = "TRANSFERENCIA";
   }
 
