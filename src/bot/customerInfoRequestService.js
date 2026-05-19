@@ -1,4 +1,6 @@
 import { findBestProduct } from "../menu/productMatcher.js";
+import { setPendingProductConfirmation } from "../orders/orderService.js";
+import { saveOrderSession } from "../storage/sessionStore.js";
 import { normalizeText } from "../utils/textNormalizer.js";
 
 const PURE_GREETING_MESSAGES = new Set([
@@ -198,6 +200,26 @@ async function buildPriceReply({ order, messageText, priceQuery }) {
   const availability = match.product.disponible === false
     ? "\nPor ahora figura como no disponible."
     : "";
+
+  if (match.product.disponible !== false) {
+    setPendingProductConfirmation(order, {
+      type: "ADD_PRODUCT",
+      quantity: 1,
+      suggestions: [
+        {
+          id: match.product.id,
+          nombre: match.product.nombre,
+          precio: match.product.precio,
+          confidence: match.confidence || 1
+        }
+      ],
+      createdAt: new Date().toISOString()
+    });
+
+    if (order.customerPhone) {
+      saveOrderSession(order.customerPhone, order);
+    }
+  }
 
   return {
     parsedMessage,
