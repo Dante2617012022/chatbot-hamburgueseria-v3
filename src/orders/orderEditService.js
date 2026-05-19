@@ -80,6 +80,16 @@ export async function tryHandleAdvancedOrderEdit({ order, messageText }) {
     });
   }
 
+  const legacyRemoveResult = await tryHandleLegacyRemove({
+    order,
+    messageText,
+    normalizedText
+  });
+
+  if (legacyRemoveResult) {
+    return legacyRemoveResult;
+  }
+
   if (isRemoveMessage(normalizedText)) {
     const removeResult = await removeMatchingItemFromOrder({
       order,
@@ -598,6 +608,136 @@ function isKeepOnlyBurgers(text) {
     text.includes("dejame las hamburguesas") ||
     text.includes("dejame solo las hamburguesas")
   );
+}
+
+async function tryHandleLegacyRemove({
+  order,
+  messageText,
+  normalizedText
+}) {
+  const removeAllMatch = normalizedText.match(
+    /^sacame\s+(?:las|los)?\s*(dos|ambas|ambos|tres|cuatro|cinco|1|2|3|4|5)$/
+  );
+
+  if (removeAllMatch && order.items.length <= 5) {
+    const quantity = parseLegacyRemoveQuantity(removeAllMatch[1]);
+
+    if (quantity >= order.items.length) {
+      order.items = [];
+      recalculateOrder(order);
+
+      return {
+        handled: true,
+        parsedMessage: buildParsedMessage({
+          messageText,
+          intent: "QUITAR_TODO_POR_CANTIDAD_DEL_PEDIDO",
+          status: "OK",
+          entities: { quantity }
+        }),
+        order,
+        reply: "Perfecto, ya eliminé esos productos. Tu pedido está vacío por ahora. ¿Querés ver el menú?"
+      };
+    }
+  }
+
+  const match = normalizedText.match(
+    /^(sacame|saca|quitame|quita|elimina|eliminame|borra|restale|sacale|bajale)\s+(.+)$/
+  );
+
+  if (!match?.[2]) {
+    return null;
+  }
+
+  const parts = match[2]
+    .replace(/[?¿!¡.,;]+$/g, "")
+    .split(/\s+(?:y|e)\s+|,\s*/g)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const advancedVerb = ["restale", "sacale", "bajale"].includes(match[1]);
+
+  if (parts.length < 2 && !advancedVerb) {
+    return null;
+  }
+
+  const removedItems = [];
+
+  for (const part of parts) {
+    const parsed = parseLegacyRemovePart(part);
+    const item = await findItemInCurrentOrder(order, parsed.query);
+
+    if (!item) {
+      continue;
+    }
+
+    const productId = getItemProductId(item);
+    const quantity = parsed.quantity || item.quantity || 1;
+
+    removeProductFromOrder(order, productId, { quantity });
+
+    removedItems.push({
+      productId,
+      quantity,
+      name: getItemName(item)
+    });
+  }
+
+  if (removedItems.length === 0) {
+    return null;
+  }
+
+  return {
+    handled: true,
+    parsedMessage: buildParsedMessage({
+      messageText,
+      intent: "QUITAR_PRODUCTOS_MULTIPLES_DEL_PEDIDO",
+      status: "OK",
+      entities: { items: removedItems }
+    }),
+    order,
+    reply: "Listo, actualicé tu pedido.\n\n" + formatOrderSummary(order)
+  };
+}
+
+function parseLegacyRemovePart(value) {
+  let text = normalizeText(value)
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const firstWord = text.split(/\s+/)[0];
+  let quantity = null;
+
+  if (/^\d+$/.test(firstWord)) {
+    quantity = Number(firstWord);
+    text = text.replace(/^\d+\s+/, "").trim();
+  } else if (NUMBER_WORDS.has(firstWord)) {
+    quantity = NUMBER_WORDS.get(firstWord);
+    text = text.replace(new RegExp(`^${firstWord}\\s+`), "").trim();
+  }
+
+  text = text
+    .replace(/\b(de|del|la|el|los|las|un|una|uno|unos|unas)\b/g, " ")
+    .replace(/\b(americanas)\b/g, "americana")
+    .replace(/\b(latas)\b/g, "lata")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return {
+    quantity,
+    query: text
+  };
+}
+
+function parseLegacyRemoveQuantity(value) {
+  if (/^\d+$/.test(value)) {
+    return Number(value);
+  }
+
+  if (value === "ambas" || value === "ambos") {
+    return 2;
+  }
+
+  return NUMBER_WORDS.get(value) || 0;
 }
 
 function isRemoveMessage(text) {

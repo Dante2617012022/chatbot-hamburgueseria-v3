@@ -20,7 +20,9 @@ test("1 - saca nuggets y papas elimina dos productos", async () => {
 
   const phone = "4084000001";
 
-  await send(phone, "quiero una bacon doble, nuggets x6 y papas clasicas");
+  await send(phone, "quiero una bacon doble");
+  await send(phone, "quiero nuggets x6");
+  await send(phone, "quiero papas clasicas");
   const result = await send(phone, "saca nuggets y papas");
 
   assert.equal(result.parsedMessage.intent, "QUITAR_PRODUCTOS_MULTIPLES_DEL_PEDIDO");
@@ -53,7 +55,8 @@ test("3 - bajale una lata elimina una bebida", async () => {
 
   const phone = "4084000003";
 
-  await send(phone, "quiero tres latas y una cheeseburger doble");
+  await send(phone, "quiero tres latas");
+  await send(phone, "quiero una cheeseburger doble");
   const result = await send(phone, "bajale una lata");
 
   assert.equal(result.parsedMessage.intent, "QUITAR_PRODUCTOS_MULTIPLES_DEL_PEDIDO");
