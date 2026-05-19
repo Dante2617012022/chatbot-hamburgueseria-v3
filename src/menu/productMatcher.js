@@ -77,7 +77,8 @@ export async function findBestProduct(
     onlyAvailable = true
   } = {}
 ) {
-  const normalizedQuery = normalizeText(query);
+  let normalizedQuery = normalizeText(query);
+  normalizedQuery = normalizeVariantCorrectionQuery(normalizedQuery);
 
   if (!normalizedQuery) {
     return {
@@ -195,6 +196,15 @@ export async function findBestProduct(
     product: formatProduct(best.item),
     suggestions
   };
+}
+
+function normalizeVariantCorrectionQuery(normalizedQuery) {
+  return String(normalizedQuery || "")
+    .replace(/\bcomun\b/g, "simple")
+    .replace(/\bcomún\b/g, "simple")
+    .replace(/\s+no\s+(doble|triple)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function buildAvailableSuggestions(normalizedQuery, maxSuggestions) {
