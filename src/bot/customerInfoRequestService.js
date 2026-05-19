@@ -62,9 +62,18 @@ const PRICE_PATTERNS = [
   /\bcuánto\s+cuesta\b/,
   /\bcuanto\s+vale\b/,
   /\bcuánto\s+vale\b/,
+  /\bcuanto\s+esta\b/,
+  /\bcuánto\s+está\b/,
   /\bprecio\s+de\b/,
+  /\bcosto\s+de\b/,
   /\bque\s+precio\b/,
   /\bqué\s+precio\b/,
+  /\bque\s+costo\b/,
+  /\bqué\s+costo\b/,
+  /\ba\s+que\s+precio\b/,
+  /\ba\s+qué\s+precio\b/,
+  /\ba\s+que\s+costo\b/,
+  /\ba\s+qué\s+costo\b/,
   /\ba\s+cuanto\b/,
   /\ba\s+cuánto\b/
 ];
@@ -155,20 +164,35 @@ function extractPriceQuery(normalizedText) {
   }
 
   const cleaned = normalizedText
+    .replace(/\ba\s+que\s+precio\s+(?:esta|está|tenes|tenés|tienen|vale|sale)\b/g, " ")
+    .replace(/\ba\s+qué\s+precio\s+(?:esta|está|tenes|tenés|tienen|vale|sale)\b/g, " ")
+    .replace(/\ba\s+que\s+costo\s+(?:esta|está|tenes|tenés|tienen|vale|sale)\b/g, " ")
+    .replace(/\ba\s+qué\s+costo\s+(?:esta|está|tenes|tenés|tienen|vale|sale)\b/g, " ")
+    .replace(/\bque\s+precio\s+(?:tiene|tienen|tenes|tenés|esta|está)\b/g, " ")
+    .replace(/\bqué\s+precio\s+(?:tiene|tienen|tenes|tenés|esta|está)\b/g, " ")
+    .replace(/\bque\s+costo\s+(?:tiene|tienen|tenes|tenés|esta|está)\b/g, " ")
+    .replace(/\bqué\s+costo\s+(?:tiene|tienen|tenes|tenés|esta|está)\b/g, " ")
     .replace(/\bcuanto\s+sale\b/g, " ")
     .replace(/\bcuánto\s+sale\b/g, " ")
     .replace(/\bcuanto\s+cuesta\b/g, " ")
     .replace(/\bcuánto\s+cuesta\b/g, " ")
     .replace(/\bcuanto\s+vale\b/g, " ")
     .replace(/\bcuánto\s+vale\b/g, " ")
+    .replace(/\bcuanto\s+esta\b/g, " ")
+    .replace(/\bcuánto\s+está\b/g, " ")
     .replace(/\bprecio\s+de\b/g, " ")
-    .replace(/\bque\s+precio\s+tiene\b/g, " ")
-    .replace(/\bqué\s+precio\s+tiene\b/g, " ")
+    .replace(/\bcosto\s+de\b/g, " ")
     .replace(/\bque\s+precio\b/g, " ")
     .replace(/\bqué\s+precio\b/g, " ")
+    .replace(/\bque\s+costo\b/g, " ")
+    .replace(/\bqué\s+costo\b/g, " ")
+    .replace(/\ba\s+que\s+precio\b/g, " ")
+    .replace(/\ba\s+qué\s+precio\b/g, " ")
+    .replace(/\ba\s+que\s+costo\b/g, " ")
+    .replace(/\ba\s+qué\s+costo\b/g, " ")
     .replace(/\ba\s+cuanto\b/g, " ")
     .replace(/\ba\s+cuánto\b/g, " ")
-    .replace(/\b(la|el|las|los|un|una|uno|de|del|porfa|por favor|sale|cuesta|vale)\b/g, " ")
+    .replace(/\b(la|el|las|los|un|una|uno|de|del|porfa|por favor|sale|cuesta|vale|esta|está|tenes|tenés|tienen|tiene|costo|precio)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
