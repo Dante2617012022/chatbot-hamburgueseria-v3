@@ -22,6 +22,12 @@ export function formatOrderSummary(order) {
     if (item.notes?.length > 0) {
       lines.push(`  Notas: ${item.notes.join(", ")}`);
     }
+
+    if (item.extras?.length > 0) {
+      for (const extra of item.extras) {
+        lines.push(`  Extra: ${extra.name} — $${formatPrice(extra.unitPrice)}`);
+      }
+    }
   }
 
   lines.push("");
@@ -80,6 +86,12 @@ export function formatOrderForBusiness(order) {
 
     if (item.notes?.length > 0) {
       lines.push(`  Notas: ${item.notes.join(", ")}`);
+    }
+
+    if (item.extras?.length > 0) {
+      for (const extra of item.extras) {
+        lines.push(`  Extra: ${extra.name} — $${formatPrice(extra.unitPrice)}`);
+      }
     }
   }
 
