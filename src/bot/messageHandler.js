@@ -2,6 +2,7 @@ import { parseCustomerMessage } from "../ai/intentParser.js";
 import { applyMessageCorrections } from "../ai/messageCorrections.js";
 import { parseMultiProductMessage } from "../ai/multiProductParser.js";
 import { tryHandleAdvancedOrderEdit } from "../orders/orderEditService.js";
+import { extractNotesAndCleanMessage } from "../orders/itemNotesService.js";
 import { handleCustomerInfoRequest } from "./customerInfoRequestService.js";
 import { parseCustomerMessageWithAiFallback, shouldUseAiFallback } from "../ai/aiFallbackParser.js";
 import { handleAdminCommand, isAdminCommand, shouldBlockCustomerMessages } from "../admin/adminCommands.js";
@@ -152,6 +153,13 @@ export async function handleCustomerMessage({
 
   const order = getOrCreateOrderSession(customerPhone);
 
+  const itemNoteData = extractNotesAndCleanMessage(messageText);
+  const itemNotes = itemNoteData.notes || [];
+
+  if (itemNotes.length > 0 && itemNoteData.cleanMessageText) {
+    messageText = itemNoteData.cleanMessageText;
+  }
+
   const customerInfoRequestResult = await handleCustomerInfoRequest({
     order,
     messageText
@@ -192,7 +200,8 @@ export async function handleCustomerMessage({
   const combinedMessageResult = await handleCombinedCustomerMessage({
     customerPhone,
     order,
-    messageText
+    messageText,
+    itemNotes
   });
 
   if (combinedMessageResult) {
@@ -296,7 +305,8 @@ export async function handleCustomerMessage({
   if (multiProductMessage.ok) {
     for (const item of multiProductMessage.items) {
       await addProductToOrder(order, item.product.id, {
-        quantity: item.quantity
+        quantity: item.quantity,
+        notes: itemNotes
       });
     }
 
@@ -309,7 +319,8 @@ export async function handleCustomerMessage({
       confidence: 0.9,
       status: multiProductMessage.status,
       entities: {
-        items: multiProductMessage.items
+        items: multiProductMessage.items,
+        notes: itemNotes
       },
       replyHint: null
     };
@@ -350,6 +361,13 @@ export async function handleCustomerMessage({
   }
 
   parsedMessage = applyMessageCorrections(parsedMessage, messageText);
+
+  if (
+    itemNotes.length > 0 &&
+    parsedMessage.intent === CUSTOMER_INTENT.ADD_PRODUCT
+  ) {
+    parsedMessage.entities.notes = itemNotes;
+  }
 
   saveMessageEvent({
     customerPhone,
@@ -476,7 +494,10 @@ async function handleAddProduct({ customerPhone, order, parsedMessage }) {
 
   clearPendingProductConfirmation(order);
 
-  await addProductToOrder(order, product.id, { quantity });
+  await addProductToOrder(order, product.id, {
+    quantity,
+    notes: parsedMessage.entities.notes || []
+  });
   saveOrderSession(customerPhone, order);
 
   return {
@@ -737,7 +758,8 @@ function isProgressRequest(text) {
 async function handleCombinedCustomerMessage({
   customerPhone,
   order,
-  messageText
+  messageText,
+  itemNotes = []
 }) {
   const paymentMethod = detectCombinedPaymentMethod(messageText);
   let deliveryData = detectCombinedDeliveryData(messageText);
@@ -798,7 +820,8 @@ async function handleCombinedCustomerMessage({
       if (multiProductMessage.ok) {
         for (const item of multiProductMessage.items) {
           await addProductToOrder(order, item.product.id, {
-            quantity: item.quantity
+            quantity: item.quantity,
+            notes: itemNotes
           });
         }
 
@@ -817,7 +840,8 @@ async function handleCombinedCustomerMessage({
           parsedProductMessage.entities?.product
         ) {
           await addProductToOrder(order, parsedProductMessage.entities.product.id, {
-            quantity: parsedProductMessage.entities.quantity || 1
+            quantity: parsedProductMessage.entities.quantity || 1,
+            notes: itemNotes
           });
 
           handledProduct = true;
