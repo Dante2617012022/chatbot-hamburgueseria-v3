@@ -320,6 +320,7 @@ export async function handleCustomerMessage({
       status: multiProductMessage.status,
       entities: {
         items: multiProductMessage.items,
+        failedItems: multiProductMessage.failedItems || [],
         notes: itemNotes
       },
       replyHint: null
@@ -342,6 +343,7 @@ export async function handleCustomerMessage({
         multiProductMessage.items
           .map((item) => `- ${item.quantity} x ${item.product.nombre}`)
           .join("\n") +
+        buildPartialMultiProductWarning(multiProductMessage.failedItems) +
         "\n\n" +
         formatOrderSummary(order) +
         buildNextStepPrompt(order)
@@ -455,6 +457,33 @@ export async function handleCustomerMessage({
           "No entendí bien tu mensaje. Podés pedirme el menú o escribirme qué producto querés."
       };
   }
+}
+
+function buildPartialMultiProductWarning(failedItems = []) {
+  if (!Array.isArray(failedItems) || failedItems.length === 0) {
+    return "";
+  }
+
+  return failedItems
+    .map(({ request, match }) => {
+      const originalRequest = [
+        request?.quantity && request.quantity !== 1 ? request.quantity : null,
+        request?.query
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+      const suggestions = match?.suggestions?.length > 0
+        ? formatProductSuggestions(match.suggestions)
+        : "No encontré productos parecidos.";
+
+      return (
+        `\n\nCon "${originalRequest || request?.query || "ese producto"}" no estoy seguro.\n` +
+        suggestions
+      );
+    })
+    .join("");
 }
 
 async function handleAddProduct({ customerPhone, order, parsedMessage }) {
@@ -830,7 +859,8 @@ async function handleCombinedCustomerMessage({
           "Agregué a tu pedido:\n" +
           multiProductMessage.items
             .map((item) => `- ${item.quantity} x ${item.product.nombre}`)
-            .join("\n");
+            .join("\n") +
+          buildPartialMultiProductWarning(multiProductMessage.failedItems);
       } else {
         let parsedProductMessage = await parseCustomerMessage(productText);
         parsedProductMessage = applyMessageCorrections(parsedProductMessage, productText);
