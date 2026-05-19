@@ -502,22 +502,25 @@ function parseKeepOnlyRequest(text) {
 }
 
 function parseKeepOnlyTarget(value) {
-  let text = cleanKeepOnlyQuery(value);
-  let quantity = null;
+  let rawText = normalizeText(value)
+    .replace(/[?¿!¡.,]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  const firstWord = text.split(/\s+/)[0];
+  let quantity = null;
+  const firstWord = rawText.split(/\s+/)[0];
 
   if (/^\d+$/.test(firstWord)) {
     quantity = Number(firstWord);
-    text = text.replace(/^\d+\s+/, "").trim();
+    rawText = rawText.replace(/^\d+\s+/, "").trim();
   } else if (NUMBER_WORDS.has(firstWord)) {
     quantity = NUMBER_WORDS.get(firstWord);
-    text = text.replace(new RegExp(`^${firstWord}\\s+`), "").trim();
+    rawText = rawText.replace(new RegExp(`^${firstWord}\\s+`), "").trim();
   }
 
   return {
     quantity,
-    queries: splitKeepOnlyQueries(text).map(cleanKeepOnlyQuery).filter(Boolean)
+    queries: splitKeepOnlyQueries(rawText).map(cleanKeepOnlyQuery).filter(Boolean)
   };
 }
 
