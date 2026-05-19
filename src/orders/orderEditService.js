@@ -1,6 +1,6 @@
 import { findBestProduct } from "../menu/productMatcher.js";
 import { normalizeText } from "../utils/textNormalizer.js";
-import { addProductToOrder, removeProductFromOrder } from "./orderService.js";
+import { addProductToOrder, recalculateOrder, removeProductFromOrder } from "./orderService.js";
 import { formatOrderSummary } from "./orderFormatter.js";
 
 const NUMBER_WORDS = new Map([
@@ -48,6 +48,16 @@ export async function tryHandleAdvancedOrderEdit({ order, messageText }) {
       order,
       messageText
     });
+  }
+
+  const keepOnlyResult = await tryHandleKeepOnlyProducts({
+    order,
+    messageText,
+    normalizedText
+  });
+
+  if (keepOnlyResult) {
+    return keepOnlyResult;
   }
 
   if (isKeepOnlyFries(normalizedText)) {
@@ -408,6 +418,166 @@ function isBareSizeChange(text) {
 
 function getLastReplaceableItem(order) {
   return order.items.at(-1) || null;
+}
+
+async function tryHandleKeepOnlyProducts({
+  order,
+  messageText,
+  normalizedText
+}) {
+  const request = parseKeepOnlyRequest(normalizedText);
+
+  if (!request) {
+    return null;
+  }
+
+  const keepItems = [];
+
+  for (const query of request.queries) {
+    const matchingItems = await resolveKeepOnlyItems(order, query);
+    keepItems.push(...matchingItems);
+  }
+
+  const uniqueKeepItems = [
+    ...new Map(keepItems.map((item) => [item.id || getItemProductId(item), item])).values()
+  ];
+
+  if (uniqueKeepItems.length === 0) {
+    return null;
+  }
+
+  const keepIds = new Set(uniqueKeepItems.map((item) => item.id || getItemProductId(item)));
+  order.items = order.items.filter((item) => keepIds.has(item.id || getItemProductId(item)));
+
+  if (request.quantity !== null && order.items.length === 1) {
+    order.items[0].quantity = request.quantity;
+  }
+
+  recalculateOrder(order);
+
+  return {
+    handled: true,
+    parsedMessage: buildParsedMessage({
+      messageText,
+      intent: "DEJAR_SOLO_PRODUCTOS",
+      status: "OK",
+      entities: {
+        queries: request.queries,
+        quantity: request.quantity
+      }
+    }),
+    order,
+    reply: "Listo, dejé solo lo que me pediste en el pedido.\n\n" + formatOrderSummary(order)
+  };
+}
+
+function parseKeepOnlyRequest(text) {
+  const normalized = normalizeText(text)
+    .replace(/[?¿!¡.,]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const patterns = [
+    /^(?:dejame|deja|dejá|dejar|quedame|quedate)\s+solo\s+(.+)$/,
+    /^(?:dejame|deja|dejá|dejar|quedame|quedate)\s+(.+)\s+solo$/,
+    /^(?:sacame|saca|quitame|quita|borra|elimina|eliminame)\s+todo\s+menos\s+(.+)$/,
+    /^todo\s+menos\s+(.+)$/
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+
+    if (!match?.[1]) {
+      continue;
+    }
+
+    const parsed = parseKeepOnlyTarget(match[1]);
+
+    if (parsed.queries.length > 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function parseKeepOnlyTarget(value) {
+  let rawText = normalizeText(value)
+    .replace(/[?¿!¡.,]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  let quantity = null;
+  const firstWord = rawText.split(/\s+/)[0];
+
+  if (/^\d+$/.test(firstWord)) {
+    quantity = Number(firstWord);
+    rawText = rawText.replace(/^\d+\s+/, "").trim();
+  } else if (NUMBER_WORDS.has(firstWord)) {
+    quantity = NUMBER_WORDS.get(firstWord);
+    rawText = rawText.replace(new RegExp(`^${firstWord}\\s+`), "").trim();
+  }
+
+  return {
+    quantity,
+    queries: splitKeepOnlyQueries(rawText).map(cleanKeepOnlyQuery).filter(Boolean)
+  };
+}
+
+function splitKeepOnlyQueries(value) {
+  return normalizeText(value)
+    .split(/\s+(?:y|e)\s+|\s*,\s*/g)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function cleanKeepOnlyQuery(value) {
+  return normalizeText(value)
+    .replace(/\b(la|el|las|los|un|una|uno|de|del|al|porfa|por favor)\b/g, " ")
+    .replace(/\b(hamburguesa|hamburguesas)\b/g, "hamburguesas")
+    .replace(/\b(gaseosas|bebidas|cocas|pepsis|sprites|fantas)\b/g, (match) => {
+      if (match === "gaseosas") return "gaseosa";
+      if (match === "bebidas") return "bebida";
+      if (match === "cocas") return "coca";
+      if (match === "pepsis") return "pepsi";
+      if (match === "sprites") return "sprite";
+      if (match === "fantas") return "fanta";
+      return match;
+    })
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function resolveKeepOnlyItems(order, query) {
+  const text = cleanKeepOnlyQuery(query);
+
+  if (!text) {
+    return [];
+  }
+
+  if (/\bhamburguesas?\b/.test(text)) {
+    return order.items.filter(isBurgerItem);
+  }
+
+  if (/\b(gaseosa|bebida|coca|pepsi|sprite|fanta|lata)\b/.test(text)) {
+    const drinks = order.items.filter(isDrinkItem);
+
+    if (drinks.length > 0) {
+      return drinks;
+    }
+  }
+
+  if (/\b(papa|papas|papita|papitas)\b/.test(text)) {
+    const fries = order.items.filter(isFriesItem);
+
+    if (fries.length > 0) {
+      return fries;
+    }
+  }
+
+  const explicitItem = await findItemInCurrentOrder(order, text);
+
+  return explicitItem ? [explicitItem] : [];
 }
 
 function isKeepOnlyFries(text) {
