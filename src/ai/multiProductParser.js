@@ -101,7 +101,7 @@ function shouldTryMultiProduct(normalizedText) {
   const cleanedText = removeOrderIntro(normalizedText);
 
   const hasAddVerb =
-    /\b(voy a querer|quiero encargar|quiero|quisiera|dame|agregame|agrega|sumame|suma|mandame|pone|poneme|necesito|preparame|prepárame|me haces|me hacés|me hacen|haceme|hacéme)\b/.test(
+    /\b(voy a querer|te voy a pedir|te quiero pedir|voy a pedir|quiero pedir|quiero encargar|quiero|quisiera|dame|agregame|agrega|sumame|suma|mandame|pone|poneme|necesito|preparame|prepárame|me preparas|me preparás|me haces|me hacés|me hacen|haceme|hacéme|te encargo|encargar)\b/.test(
       normalizedText
     );
 
@@ -119,7 +119,13 @@ function shouldTryMultiProduct(normalizedText) {
 
   const looksLikeNaturalOrder =
     normalizedText.startsWith("voy a querer") ||
+    normalizedText.startsWith("hola voy a querer") ||
     normalizedText.startsWith("quiero encargar") ||
+    normalizedText.startsWith("te voy a pedir") ||
+    normalizedText.startsWith("hola te voy a pedir") ||
+    normalizedText.startsWith("te quiero pedir") ||
+    normalizedText.startsWith("voy a pedir") ||
+    normalizedText.startsWith("quiero pedir") ||
     normalizedText.startsWith("me preparas") ||
     normalizedText.startsWith("me preparás") ||
     normalizedText.startsWith("preparame") ||
@@ -131,7 +137,7 @@ function shouldTryMultiProduct(normalizedText) {
     );
 
   const startsWithKnownProductTerm =
-    /^(coca|gaseosa|bebida|lata|latita|papas|papitas|nugget|nuggets|cheese|cheeseburger|bacon|big|cuarto|americana|americanas|araka|onion|crispy|camdis)\b/.test(
+    /^(coca|pepsi|sprite|fanta|gaseosa|bebida|lata|latita|papas|papitas|nugget|nuggets|cheese|cheeseburger|bacon|big|cuarto|americana|americanas|araka|onion|crispy|camdis)\b/.test(
       cleanedText
     );
 
@@ -149,6 +155,12 @@ function isNaturalSingleProductOrder(normalizedText) {
   return (
     normalizedText.startsWith("quiero encargar ") ||
     normalizedText.startsWith("voy a querer ") ||
+    normalizedText.startsWith("hola voy a querer ") ||
+    normalizedText.startsWith("te voy a pedir ") ||
+    normalizedText.startsWith("hola te voy a pedir ") ||
+    normalizedText.startsWith("te quiero pedir ") ||
+    normalizedText.startsWith("voy a pedir ") ||
+    normalizedText.startsWith("quiero pedir ") ||
     normalizedText.startsWith("preparame ") ||
     normalizedText.startsWith("prepárame ") ||
     normalizedText.startsWith("me preparas ") ||
@@ -172,6 +184,7 @@ function extractProductRequests(normalizedText) {
     .replace(/\bmas\b/g, " y ");
 
   text = protectInternalConnectors(text);
+  text = insertQuantitySeparators(text);
 
   const parts = text
     .split(/\s+y\s+|,/)
@@ -208,11 +221,12 @@ function removeOrderIntro(text) {
   let cleaned = String(text || "").trim();
 
   const patterns = [
-    /^(buenas|buen dia|buen día|buenas tardes|buenas noches)\s+/,
+    /^(hola|buenas|buen dia|buen día|buenas tardes|buenas noches)\s+/,
     /^(voy a querer que me preparen|voy a querer que preparen)\s+/,
-    /^(quiero encargar|quiero pedir|quiero que me preparen)\s+/,
+    /^(te voy a pedir|te quiero pedir|voy a pedir|quiero pedir)\s+/,
+    /^(quiero encargar|quiero que me preparen)\s+/,
     /^(voy a querer|quiero|quisiera|dame|agregame|agrega|sumame|suma|mandame|pone|poneme|necesito)\s+/,
-    /^(que me preparen|que preparen|preparame|prepárame|me preparas|me preparás|me haces|me hacés|me hacen|haceme|hacéme|hacerme|encargar)\s+/
+    /^(que me preparen|que preparen|preparame|prepárame|me preparas|me preparás|me haces|me hacés|me hacen|haceme|hacéme|hacerme|encargar|te encargo)\s+/
   ];
 
   let changed = true;
@@ -229,6 +243,21 @@ function removeOrderIntro(text) {
   }
 
   return cleaned;
+}
+
+function insertQuantitySeparators(text) {
+  return String(text || "").replace(
+    /\s+(un|una|uno|unas|unos|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|[1-9])\s+(?=(?:[a-z0-9]+\s+){0,3}(?:coca|pepsi|sprite|fanta|gaseosa|gaseosas|bebida|bebidas|lata|latas|papas|papa|papitas|nugget|nuggets|cheese|cheeseburger|bacon|big|cuarto|americana|americanas|araka|onion|crispy|camdis)\b)/g,
+    (match, quantity, offset, fullText) => {
+      const before = fullText.slice(0, offset).trimEnd();
+
+      if (!before || /(?:^|\s)y$/.test(before) || before.endsWith(",")) {
+        return match;
+      }
+
+      return ` y ${quantity} `;
+    }
+  );
 }
 
 function parseProductPart(part) {
@@ -251,6 +280,19 @@ function parseProductPart(part) {
 
   cleaned = cleaned
     .replace(/^(de|del|la|el|los|las)\s+/, "")
+    .replace(/\bpepsi\s+grande\b/g, "gaseosa grande")
+    .replace(/\bgaseosas\s+grandes\s+pepsi\b/g, "gaseosa grande")
+    .replace(/\bgaseosa\s+grande\s+pepsi\b/g, "gaseosa grande")
+    .replace(/\bbebidas\s+grandes\s+pepsi\b/g, "bebida grande")
+    .replace(/\bbebida\s+grande\s+pepsi\b/g, "bebida grande")
+    .replace(/\bcrispy\s+triples\b/g, "crispy triple")
+    .replace(/\bcamdis\s+crispy\s+triples\b/g, "camdis crispy triple")
+    .replace(/\btriples\s+crispy\b/g, "triple crispy")
+    .replace(/\bpapa\s+gratinada\b/g, "papas gratinadas")
+    .replace(/\bpapa\s+gratinadas\b/g, "papas gratinadas")
+    .replace(/\bpapas\s+gratinada\b/g, "papas gratinadas")
+    .replace(/\blatas\s+de\s+pepsi\b/g, "lata de pepsi")
+    .replace(/\blatas\s+pepsi\b/g, "lata pepsi")
     .trim();
 
   return {
@@ -270,7 +312,6 @@ function restoreInternalConnectors(text) {
     .replace(/litro_y_medio/g, "litro y medio")
     .replace(/1_y_medio/g, "1 y medio");
 }
-
 
 function normalizeAccessoryConnectors(text) {
   return String(text || "")
