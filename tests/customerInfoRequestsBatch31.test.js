@@ -148,3 +148,32 @@ test("12 - a que precio esta la cuarto a simple mantiene comportamiento", async 
   assert.match(result.reply, /Cuarto A simple/i);
   assert.match(result.reply, /\$8\.000|\$8,000/i);
 });
+
+test("13 - seguimiento de precio no confirma variante pendiente anterior", async () => {
+  resetSessionsForTests();
+
+  const phone = "4000000013";
+
+  await send(phone, "a que costo esta la onion doble");
+  const followUp = await send(phone, "y la big camdis triple?");
+
+  assert.equal(followUp.parsedMessage.intent, "CONSULTAR_PRECIO_PRODUCTO");
+  assert.match(followUp.reply, /Big camdis triple/i);
+  assert.match(followUp.reply, /\$12\.000|\$12,000/i);
+  assert.equal(followUp.order.items.length, 0);
+});
+
+test("14 - si despues del seguimiento agrega el ultimo producto consultado", async () => {
+  resetSessionsForTests();
+
+  const phone = "4000000014";
+
+  await send(phone, "a que costo esta la onion doble");
+  await send(phone, "y la big camdis triple?");
+  const confirmation = await send(phone, "si");
+
+  assert.equal(confirmation.parsedMessage.intent, "CONFIRMAR_SUGERENCIA_PRODUCTO");
+  assert.match(confirmation.reply, /Big camdis triple/i);
+  assert.equal(confirmation.order.items.length, 1);
+  assert.equal(confirmation.order.items[0].productId, "big_camdis_triple");
+});
