@@ -55,42 +55,16 @@ const LOCATION_KEYWORDS = [
   "me pasás la ubicación"
 ];
 
-const PRICE_PATTERNS = [
-  /\bcuanto\s+sale\b/,
-  /\bcuánto\s+sale\b/,
-  /\bcuanto\s+cuesta\b/,
-  /\bcuánto\s+cuesta\b/,
-  /\bcuanto\s+vale\b/,
-  /\bcuánto\s+vale\b/,
-  /\bcuanto\s+esta\b/,
-  /\bcuánto\s+está\b/,
-  /\bprecio\s+de\b/,
-  /\bcosto\s+de\b/,
-  /\bque\s+precio\b/,
-  /\bqué\s+precio\b/,
-  /\bque\s+costo\b/,
-  /\bqué\s+costo\b/,
-  /\ba\s+que\s+precio\b/,
-  /\ba\s+qué\s+precio\b/,
-  /\ba\s+que\s+costo\b/,
-  /\ba\s+qué\s+costo\b/,
-  /\ba\s+cuanto\b/,
-  /\ba\s+cuánto\b/
-];
+const PRODUCT_TERMS = /\b(coca|pepsi|sprite|fanta|gaseosa|bebida|lata|papas|papa|nugget|nuggets|cheese|cheeseburger|bacon|big|cuarto|americana|americanas|araka|onion|crispy|camdis)\b/;
 
 export async function handleCustomerInfoRequest({ order, messageText }) {
   const normalizedText = normalizeText(messageText);
 
-  if (!normalizedText) {
-    return null;
-  }
+  if (!normalizedText) return null;
 
   if (isPureGreeting(normalizedText)) {
     return {
-      parsedMessage: buildSyntheticParsedMessage({
-        messageText,
-        intent: "SALUDO_CLIENTE"
-      }),
+      parsedMessage: buildSyntheticParsedMessage({ messageText, intent: "SALUDO_CLIENTE" }),
       order,
       reply: buildGreetingReply(order)
     };
@@ -98,34 +72,23 @@ export async function handleCustomerInfoRequest({ order, messageText }) {
 
   if (isLocationRequest(normalizedText)) {
     return {
-      parsedMessage: buildSyntheticParsedMessage({
-        messageText,
-        intent: "CONSULTAR_UBICACION_LOCAL"
-      }),
+      parsedMessage: buildSyntheticParsedMessage({ messageText, intent: "CONSULTAR_UBICACION_LOCAL" }),
       order,
       reply: buildLocationReply()
     };
   }
 
-  const priceQuery = extractPriceQuery(normalizedText);
+  const priceQuery = extractPriceQuery(normalizedText) || extractPriceFollowUpQuery(normalizedText, order);
 
   if (priceQuery) {
-    return buildPriceReply({
-      order,
-      messageText,
-      priceQuery
-    });
+    return buildPriceReply({ order, messageText, priceQuery });
   }
 
   return null;
 }
 
 function isPureGreeting(normalizedText) {
-  const text = normalizedText
-    .replace(/[!¡?¿.]+/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
+  const text = normalizedText.replace(/[!¡?¿.]+/g, "").replace(/\s+/g, " ").trim();
   return PURE_GREETING_MESSAGES.has(text);
 }
 
@@ -150,46 +113,26 @@ function isLocationRequest(normalizedText) {
 
 function buildLocationReply() {
   const address = process.env.STORE_ADDRESS || "Uttinger, Gral. José de San Martín y, T4103 Tafí Viejo, Tucumán.";
-
   return `📍 Estamos en: ${address}`;
 }
 
 function extractPriceQuery(normalizedText) {
-  if (!PRICE_PATTERNS.some((pattern) => pattern.test(normalizedText))) {
-    return null;
-  }
+  if (!looksLikePriceQuestion(normalizedText)) return null;
 
-  if (/\b(todo|total|pedido|cuenta|final)\b/.test(normalizedText)) {
-    return null;
-  }
+  if (/\b(todo|total|pedido|cuenta|final)\b/.test(normalizedText)) return null;
 
   const cleaned = normalizedText
-    .replace(/\ba\s+que\s+precio\s+(?:esta|está|tenes|tenés|tienen|vale|sale)\b/g, " ")
-    .replace(/\ba\s+qué\s+precio\s+(?:esta|está|tenes|tenés|tienen|vale|sale)\b/g, " ")
-    .replace(/\ba\s+que\s+costo\s+(?:esta|está|tenes|tenés|tienen|vale|sale)\b/g, " ")
-    .replace(/\ba\s+qué\s+costo\s+(?:esta|está|tenes|tenés|tienen|vale|sale)\b/g, " ")
-    .replace(/\bque\s+precio\s+(?:tiene|tienen|tenes|tenés|esta|está)\b/g, " ")
-    .replace(/\bqué\s+precio\s+(?:tiene|tienen|tenes|tenés|esta|está)\b/g, " ")
-    .replace(/\bque\s+costo\s+(?:tiene|tienen|tenes|tenés|esta|está)\b/g, " ")
-    .replace(/\bqué\s+costo\s+(?:tiene|tienen|tenes|tenés|esta|está)\b/g, " ")
-    .replace(/\bcuanto\s+sale\b/g, " ")
-    .replace(/\bcuánto\s+sale\b/g, " ")
-    .replace(/\bcuanto\s+cuesta\b/g, " ")
-    .replace(/\bcuánto\s+cuesta\b/g, " ")
-    .replace(/\bcuanto\s+vale\b/g, " ")
-    .replace(/\bcuánto\s+vale\b/g, " ")
-    .replace(/\bcuanto\s+esta\b/g, " ")
-    .replace(/\bcuánto\s+está\b/g, " ")
-    .replace(/\bprecio\s+de\b/g, " ")
-    .replace(/\bcosto\s+de\b/g, " ")
-    .replace(/\bque\s+precio\b/g, " ")
-    .replace(/\bqué\s+precio\b/g, " ")
-    .replace(/\bque\s+costo\b/g, " ")
-    .replace(/\bqué\s+costo\b/g, " ")
-    .replace(/\ba\s+que\s+precio\b/g, " ")
-    .replace(/\ba\s+qué\s+precio\b/g, " ")
-    .replace(/\ba\s+que\s+costo\b/g, " ")
-    .replace(/\ba\s+qué\s+costo\b/g, " ")
+    .replace(/\ba\s+que\s+(precio|costo)\s+(esta|está|tenes|tenés|tienen|vale|sale)\b/g, " ")
+    .replace(/\ba\s+qué\s+(precio|costo)\s+(esta|está|tenes|tenés|tienen|vale|sale)\b/g, " ")
+    .replace(/\bque\s+(precio|costo)\s+(tiene|tienen|tenes|tenés|esta|está)\b/g, " ")
+    .replace(/\bqué\s+(precio|costo)\s+(tiene|tienen|tenes|tenés|esta|está)\b/g, " ")
+    .replace(/\bcuanto\s+(sale|cuesta|vale|esta)\b/g, " ")
+    .replace(/\bcuánto\s+(sale|cuesta|vale|está)\b/g, " ")
+    .replace(/\b(precio|costo)\s+de\b/g, " ")
+    .replace(/\bque\s+(precio|costo)\b/g, " ")
+    .replace(/\bqué\s+(precio|costo)\b/g, " ")
+    .replace(/\ba\s+que\s+(precio|costo)\b/g, " ")
+    .replace(/\ba\s+qué\s+(precio|costo)\b/g, " ")
     .replace(/\ba\s+cuanto\b/g, " ")
     .replace(/\ba\s+cuánto\b/g, " ")
     .replace(/\b(la|el|las|los|un|una|uno|de|del|porfa|por favor|sale|cuesta|vale|esta|está|tenes|tenés|tienen|tiene|costo|precio)\b/g, " ")
@@ -199,10 +142,38 @@ function extractPriceQuery(normalizedText) {
   return cleaned || null;
 }
 
+function looksLikePriceQuestion(text) {
+  return (
+    /\bcuanto\s+(sale|cuesta|vale|esta)\b/.test(text) ||
+    /\bcuánto\s+(sale|cuesta|vale|está)\b/.test(text) ||
+    /\b(precio|costo)\s+de\b/.test(text) ||
+    /\b(que|qué)\s+(precio|costo)\b/.test(text) ||
+    /\ba\s+(que|qué)\s+(precio|costo)\b/.test(text) ||
+    /\ba\s+(cuanto|cuánto)\b/.test(text)
+  );
+}
+
+function extractPriceFollowUpQuery(normalizedText, order) {
+  if (order?.pendingProductConfirmation?.source !== "PRICE_QUERY") return null;
+
+  const text = normalizedText.replace(/[?¿!¡.]+/g, "").replace(/\s+/g, " ").trim();
+  const directReplies = new Set(["si", "sisi", "dale", "ok", "okay", "correcto", "exacto", "no"]);
+
+  if (!text || directReplies.has(text)) return null;
+
+  const cleaned = text
+    .replace(/^y\s+/, "")
+    .replace(/^(la|el|las|los|un|una|uno)\s+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned || !PRODUCT_TERMS.test(cleaned)) return null;
+
+  return cleaned;
+}
+
 async function buildPriceReply({ order, messageText, priceQuery }) {
-  const match = await findBestProduct(priceQuery, {
-    onlyAvailable: false
-  });
+  const match = await findBestProduct(priceQuery, { onlyAvailable: false });
 
   const parsedMessage = buildSyntheticParsedMessage({
     messageText,
@@ -221,13 +192,12 @@ async function buildPriceReply({ order, messageText, priceQuery }) {
     };
   }
 
-  const availability = match.product.disponible === false
-    ? "\nPor ahora figura como no disponible."
-    : "";
+  const availability = match.product.disponible === false ? "\nPor ahora figura como no disponible." : "";
 
   if (match.product.disponible !== false) {
     setPendingProductConfirmation(order, {
       type: "ADD_PRODUCT",
+      source: "PRICE_QUERY",
       quantity: 1,
       suggestions: [
         {
@@ -240,9 +210,7 @@ async function buildPriceReply({ order, messageText, priceQuery }) {
       createdAt: new Date().toISOString()
     });
 
-    if (order.customerPhone) {
-      saveOrderSession(order.customerPhone, order);
-    }
+    if (order.customerPhone) saveOrderSession(order.customerPhone, order);
   }
 
   return {
@@ -256,11 +224,7 @@ function formatCurrency(value) {
   return `$${Number(value || 0).toLocaleString("es-AR")}`;
 }
 
-function buildSyntheticParsedMessage({
-  messageText,
-  intent,
-  entities = {}
-}) {
+function buildSyntheticParsedMessage({ messageText, intent, entities = {} }) {
   return {
     rawText: messageText,
     normalizedText: normalizeText(messageText),
