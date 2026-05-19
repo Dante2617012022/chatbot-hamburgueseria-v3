@@ -24,20 +24,32 @@ const NOTE_PATTERNS = [
   { pattern: /\bcon\s+extra\s+bacon\b/g, note: "extra bacon" },
   { pattern: /\bextra\s+carne\b/g, note: "extra carne" },
   { pattern: /\bcon\s+extra\s+carne\b/g, note: "extra carne" },
-  { pattern: /\bsalsa\s+extra\b/g, note: "salsa extra" },
-  { pattern: /\bcon\s+salsa\s+extra\b/g, note: "salsa extra" }
+  {
+    pattern: /\bsalsa\s+extra\b/g,
+    note: "salsa extra",
+    shouldSkip: ({ normalized, index }) => isSalsaExtraBlockedBySinSalsa(normalized, index)
+  },
+  {
+    pattern: /\bcon\s+salsa\s+extra\b/g,
+    note: "salsa extra",
+    shouldSkip: ({ normalized, index }) => isSalsaExtraBlockedBySinSalsa(normalized, index)
+  }
 ];
 
 export function extractItemNotes(messageText) {
   const normalized = normalizeText(messageText);
   const notes = [];
 
-  for (const { pattern, note } of NOTE_PATTERNS) {
-    if (pattern.test(normalized)) {
-      notes.push(note);
+  for (const config of NOTE_PATTERNS) {
+    for (const match of normalized.matchAll(config.pattern)) {
+      if (config.shouldSkip?.({ normalized, index: match.index ?? 0, match })) {
+        continue;
+      }
+
+      notes.push(config.note);
     }
 
-    pattern.lastIndex = 0;
+    config.pattern.lastIndex = 0;
   }
 
   return [...new Set(notes)];
@@ -46,9 +58,18 @@ export function extractItemNotes(messageText) {
 export function removeItemNotesFromText(messageText) {
   let cleaned = normalizeText(messageText);
 
-  for (const { pattern } of NOTE_PATTERNS) {
-    cleaned = cleaned.replace(pattern, " ");
-    pattern.lastIndex = 0;
+  for (const config of NOTE_PATTERNS) {
+    cleaned = cleaned.replace(config.pattern, (...args) => {
+      const index = args.at(-2);
+
+      if (config.shouldSkip?.({ normalized: cleaned, index, match: args })) {
+        return args[0];
+      }
+
+      return " ";
+    });
+
+    config.pattern.lastIndex = 0;
   }
 
   return cleaned
@@ -66,4 +87,10 @@ export function extractNotesAndCleanMessage(messageText) {
 
 export function hasItemNotes(messageText) {
   return extractItemNotes(messageText).length > 0;
+}
+
+function isSalsaExtraBlockedBySinSalsa(normalized, index) {
+  const before = normalized.slice(Math.max(0, index - 8), index);
+
+  return /\bsin\s+$/.test(before);
 }
