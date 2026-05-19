@@ -33,6 +33,13 @@ const BLOCKED_AI_FALLBACK_INTENTS = new Set([
   CUSTOMER_INTENT.ASK_DELIVERY
 ]);
 
+const VALID_AI_RESOLUTIONS = new Set([
+  "SAFE_MATCH",
+  "AMBIGUOUS",
+  "INCOMPLETE",
+  "INVALID"
+]);
+
 export function isAiFallbackEnabled() {
   return (
     process.env.ENABLE_AI_FALLBACK === "true" &&
@@ -108,6 +115,7 @@ async function callOpenAiIntentParser(rawText) {
         "Devolvé solamente JSON válido siguiendo el schema. " +
         "No inventes productos, precios, promociones ni estados. " +
         "Si el cliente pide un producto, devolvé productQuery con el nombre más probable del catálogo. " +
+        "Devolvé resolution SAFE_MATCH si estás seguro, AMBIGUOUS si hay varias opciones, INCOMPLETE si falta variante/tamaño, INVALID si no corresponde. " +
         "Si no estás seguro, usá intent NO_ENTENDIDO y confidence baja. " +
         "No confirmes ni canceles pedidos: esas acciones las maneja el sistema determinístico."
     },
@@ -134,6 +142,46 @@ async function buildParsedMessageFromAi(rawText, aiResult, { minConfidence }) {
     : CUSTOMER_INTENT.UNKNOWN;
 
   const confidence = sanitizeConfidence(aiResult?.confidence);
+  const aiResolution = normalizeAiResolution(aiResult?.resolution);
+
+  if (aiResolution === "INVALID_RESOLUTION") {
+    return buildRejectedAiParsedMessage({
+      rawText,
+      normalizedText,
+      status: "AI_INVALID_RESOLUTION",
+      entities: {
+        aiResolution: aiResult?.resolution || null
+      },
+      replyHint: "No pude procesar eso automáticamente. Escribime el producto de otra forma o pedí ayuda humana."
+    });
+  }
+
+  if (aiResolution === "INVALID") {
+    return buildRejectedAiParsedMessage({
+      rawText,
+      normalizedText,
+      status: "AI_INVALID",
+      entities: {
+        aiResolution
+      },
+      replyHint: aiResult?.replyHint || "No pude procesar eso automáticamente."
+    });
+  }
+
+  if (aiResolution === "AMBIGUOUS" || aiResolution === "INCOMPLETE") {
+    return buildRejectedAiParsedMessage({
+      rawText,
+      normalizedText,
+      status: aiResolution === "AMBIGUOUS" ? "AI_AMBIGUOUS" : "AI_INCOMPLETE",
+      entities: {
+        aiResolution,
+        productQuery: aiResult?.productQuery || null
+      },
+      replyHint:
+        aiResult?.replyHint ||
+        "Te entendí, pero necesito que me aclares una opción para no cargar mal el pedido."
+    });
+  }
 
   if (confidence < minConfidence) {
     return buildRejectedAiParsedMessage({
@@ -153,7 +201,9 @@ async function buildParsedMessageFromAi(rawText, aiResult, { minConfidence }) {
     });
   }
 
-  const entities = {};
+  const entities = {
+    aiResolution
+  };
 
   if (
     intent === CUSTOMER_INTENT.ADD_PRODUCT ||
@@ -213,14 +263,20 @@ async function buildParsedMessageFromAi(rawText, aiResult, { minConfidence }) {
   });
 }
 
-function buildRejectedAiParsedMessage({ rawText, normalizedText, status, replyHint }) {
+function buildRejectedAiParsedMessage({
+  rawText,
+  normalizedText,
+  status,
+  replyHint,
+  entities = {}
+}) {
   return validateParsedMessage({
     rawText: rawText || "",
     normalizedText,
     intent: CUSTOMER_INTENT.UNKNOWN,
     confidence: 0,
     status,
-    entities: {},
+    entities,
     replyHint
   });
 }
@@ -263,6 +319,20 @@ function normalizePaymentMethod(value) {
   return null;
 }
 
+function normalizeAiResolution(value) {
+  if (value === null || value === undefined || value === "") {
+    return "SAFE_MATCH";
+  }
+
+  const normalized = String(value).trim().toUpperCase();
+
+  if (VALID_AI_RESOLUTIONS.has(normalized)) {
+    return normalized;
+  }
+
+  return "INVALID_RESOLUTION";
+}
+
 const AI_INTENT_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -292,6 +362,10 @@ const AI_INTENT_SCHEMA = {
       minimum: 0,
       maximum: 1
     },
+    resolution: {
+      type: ["string", "null"],
+      enum: ["SAFE_MATCH", "AMBIGUOUS", "INCOMPLETE", "INVALID", null]
+    },
     productQuery: {
       type: ["string", "null"]
     },
@@ -318,6 +392,7 @@ const AI_INTENT_SCHEMA = {
   required: [
     "intent",
     "confidence",
+    "resolution",
     "productQuery",
     "quantity",
     "deliveryType",
