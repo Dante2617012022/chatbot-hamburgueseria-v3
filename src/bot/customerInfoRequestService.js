@@ -1,5 +1,10 @@
 import { findBestProduct } from "../menu/productMatcher.js";
-import { setPendingProductConfirmation } from "../orders/orderService.js";
+import {
+  addProductToOrder,
+  clearPendingProductConfirmation,
+  setPendingProductConfirmation
+} from "../orders/orderService.js";
+import { formatOrderSummary } from "../orders/orderFormatter.js";
 import { saveOrderSession } from "../storage/sessionStore.js";
 import { normalizeText } from "../utils/textNormalizer.js";
 
@@ -62,6 +67,21 @@ export async function handleCustomerInfoRequest({ order, messageText }) {
 
   if (!normalizedText) return null;
 
+  const pendingPriceConfirmationResult = await handlePendingPriceConfirmationMessage({
+    order,
+    messageText,
+    normalizedText
+  });
+
+  if (pendingPriceConfirmationResult) {
+    return pendingPriceConfirmationResult;
+  }
+
+  clearStalePriceConfirmationForNewProductOrder({
+    order,
+    normalizedText
+  });
+
   if (isPureGreeting(normalizedText)) {
     return {
       parsedMessage: buildSyntheticParsedMessage({ messageText, intent: "SALUDO_CLIENTE" }),
@@ -85,6 +105,106 @@ export async function handleCustomerInfoRequest({ order, messageText }) {
   }
 
   return null;
+}
+
+async function handlePendingPriceConfirmationMessage({
+  order,
+  messageText,
+  normalizedText
+}) {
+  const pending = order?.pendingProductConfirmation;
+
+  if (pending?.source !== "PRICE_QUERY") {
+    return null;
+  }
+
+  if (!isAddPriceConfirmationReply(normalizedText)) {
+    return null;
+  }
+
+  const suggestion = pending.suggestions?.[0];
+
+  if (!suggestion?.id) {
+    return null;
+  }
+
+  await addProductToOrder(order, suggestion.id, {
+    quantity: pending.quantity || 1
+  });
+
+  clearPendingProductConfirmation(order);
+
+  if (order.customerPhone) {
+    saveOrderSession(order.customerPhone, order);
+  }
+
+  return {
+    parsedMessage: buildSyntheticParsedMessage({
+      messageText,
+      intent: "CONFIRMAR_SUGERENCIA_PRODUCTO",
+      entities: {
+        productId: suggestion.id,
+        quantity: pending.quantity || 1
+      }
+    }),
+    order,
+    reply:
+      `Perfecto, agregué *${suggestion.nombre}* a tu pedido.\n\n` +
+      formatOrderSummary(order) +
+      buildNextStepPrompt(order)
+  };
+}
+
+function clearStalePriceConfirmationForNewProductOrder({
+  order,
+  normalizedText
+}) {
+  if (order?.pendingProductConfirmation?.source !== "PRICE_QUERY") {
+    return;
+  }
+
+  if (!looksLikeNewProductOrder(normalizedText)) {
+    return;
+  }
+
+  clearPendingProductConfirmation(order);
+
+  if (order.customerPhone) {
+    saveOrderSession(order.customerPhone, order);
+  }
+}
+
+function isAddPriceConfirmationReply(normalizedText) {
+  const text = normalizedText
+    .replace(/[?¿!¡.,]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return new Set([
+    "si agrega",
+    "si agregalo",
+    "si agregala",
+    "si sumale",
+    "si sumalo",
+    "si sumala",
+    "agrega",
+    "agregalo",
+    "agregala",
+    "sumale",
+    "sumalo",
+    "sumala",
+    "mandale",
+    "lo quiero",
+    "quiero ese",
+    "quiero esa"
+  ]).has(text);
+}
+
+function looksLikeNewProductOrder(normalizedText) {
+  return (
+    /^(quiero|agregame|agrega|sumame|sumale|dame|mandame|preparame|prepárame|me\s+preparas|me\s+preparás|me\s+armas|me\s+armás|necesito)\b/.test(normalizedText) &&
+    PRODUCT_TERMS.test(normalizedText)
+  );
 }
 
 function isPureGreeting(normalizedText) {
@@ -157,9 +277,23 @@ function extractPriceFollowUpQuery(normalizedText, order) {
   if (order?.pendingProductConfirmation?.source !== "PRICE_QUERY") return null;
 
   const text = normalizedText.replace(/[?¿!¡.]+/g, "").replace(/\s+/g, " ").trim();
-  const directReplies = new Set(["si", "sisi", "dale", "ok", "okay", "correcto", "exacto", "no"]);
+  const directReplies = new Set([
+    "si",
+    "sisi",
+    "si agrega",
+    "si agregalo",
+    "si sumale",
+    "dale",
+    "ok",
+    "okay",
+    "correcto",
+    "exacto",
+    "no"
+  ]);
 
   if (!text || directReplies.has(text)) return null;
+
+  if (!/^y\s+/.test(text)) return null;
 
   const cleaned = text
     .replace(/^y\s+/, "")
@@ -222,6 +356,36 @@ async function buildPriceReply({ order, messageText, priceQuery }) {
 
 function formatCurrency(value) {
   return `$${Number(value || 0).toLocaleString("es-AR")}`;
+}
+
+function buildNextStepPrompt(order) {
+  if (!order?.items?.length) {
+    return "";
+  }
+
+  const missing = [];
+
+  if (!order.deliveryType) {
+    missing.push("*entrega*: delivery o retiro por el local");
+    missing.push("*dirección*: solo si es delivery");
+  } else if (order.deliveryType === "DELIVERY" && !order.deliveryAddress) {
+    missing.push("*dirección* para el delivery");
+  }
+
+  if (!order.paymentMethod) {
+    missing.push("*forma de pago*: Mercado Pago, efectivo o transferencia");
+  }
+
+  if (missing.length === 0) {
+    return "\n\nYa tengo todos los datos. Si está todo correcto, respondé *confirmo*.";
+  }
+
+  return (
+    "\n\nPara completar el pedido me falta:" +
+    "\n" +
+    missing.map((item) => `- ${item}`).join("\n") +
+    "\n\nPodés mandarlo todo junto, por ejemplo: *delivery a Centenario 49 pago Mercado Pago* o *retiro efectivo*."
+  );
 }
 
 function buildSyntheticParsedMessage({ messageText, intent, entities = {} }) {
