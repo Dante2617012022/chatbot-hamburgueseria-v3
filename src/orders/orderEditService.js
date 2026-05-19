@@ -147,6 +147,12 @@ async function tryHandleProductChange({
 }
 
 function parseChangeRequest(text) {
+  const implicitVariantCorrection = parseImplicitVariantCorrection(text);
+
+  if (implicitVariantCorrection) {
+    return implicitVariantCorrection;
+  }
+
   const explicitPatterns = [
     /^(?:cambiame|cambia|cambiá|cambiala|cambialo)\s+(?:la|el|las|los)?\s*(.+?)\s+por\s+(.+)$/,
     /^en vez de\s+(.+?)\s+(?:poneme|pone|poné|agregame|agrega|sumame|suma|mandame|manda)\s+(.+)$/,
@@ -180,6 +186,38 @@ function parseChangeRequest(text) {
         targetQuery: cleanChangeQuery(match[1])
       };
     }
+  }
+
+  return null;
+}
+
+function parseImplicitVariantCorrection(text) {
+  const normalized = normalizeText(text);
+
+  const simpleNoDoubleMatch = normalized.match(
+    /^(.+?)\s+(simple|comun|común)\s+no\s+(doble|triple)$/
+  );
+
+  if (simpleNoDoubleMatch?.[1]) {
+    const familyQuery = cleanChangeQuery(simpleNoDoubleMatch[1]);
+
+    return {
+      sourceQuery: `${familyQuery} ${simpleNoDoubleMatch[3]}`,
+      targetQuery: `${familyQuery} simple`
+    };
+  }
+
+  const noDoubleSimpleMatch = normalized.match(
+    /^(.+?)\s+no\s+(doble|triple),?\s*(simple|comun|común)$/
+  );
+
+  if (noDoubleSimpleMatch?.[1]) {
+    const familyQuery = cleanChangeQuery(noDoubleSimpleMatch[1]);
+
+    return {
+      sourceQuery: `${familyQuery} ${noDoubleSimpleMatch[2]}`,
+      targetQuery: `${familyQuery} simple`
+    };
   }
 
   return null;
