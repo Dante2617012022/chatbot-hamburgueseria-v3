@@ -66,7 +66,7 @@ test("4 - ok restame 2 gaseosas quita dos unidades", async () => {
 
   assert.equal(result.parsedMessage.intent, "QUITAR_PRODUCTO_DEL_PEDIDO");
   assert.match(result.reply, /Gaseosa 1\.5L/i);
-  assert.equal(result.order.items.find((item) => item.productId === "gaseosa_15l")?.quantity, 1);
+  assert.equal(result.order.items.find((item) => item.productId === "bebida_15l")?.quantity, 1);
 });
 
 test("5 - delibery se entiende como delivery", async () => {
