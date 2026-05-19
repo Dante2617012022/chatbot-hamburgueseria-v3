@@ -118,3 +118,33 @@ test("9 - si confirma precio de crispy triple agrega ese producto", async () => 
   assert.equal(confirmation.order.items.length, 1);
   assert.equal(confirmation.order.items[0].productId, "camdis_crispy_triple");
 });
+
+test("10 - a que precio tenes la onion doble responde precio", async () => {
+  resetSessionsForTests();
+
+  const result = await send("4000000010", "a que precio tenes la onion doble");
+
+  assert.equal(result.parsedMessage.intent, "CONSULTAR_PRECIO_PRODUCTO");
+  assert.match(result.reply, /Onion doble/i);
+  assert.match(result.reply, /\$9\.500|\$9,500/i);
+});
+
+test("11 - a que costo esta la onion doble responde precio", async () => {
+  resetSessionsForTests();
+
+  const result = await send("4000000011", "a que costo esta la onion doble");
+
+  assert.equal(result.parsedMessage.intent, "CONSULTAR_PRECIO_PRODUCTO");
+  assert.match(result.reply, /Onion doble/i);
+  assert.match(result.reply, /\$9\.500|\$9,500/i);
+});
+
+test("12 - a que precio esta la cuarto a simple mantiene comportamiento", async () => {
+  resetSessionsForTests();
+
+  const result = await send("4000000012", "a que precio esta la cuarto a simple");
+
+  assert.equal(result.parsedMessage.intent, "CONSULTAR_PRECIO_PRODUCTO");
+  assert.match(result.reply, /Cuarto A simple/i);
+  assert.match(result.reply, /\$8\.000|\$8,000/i);
+});
