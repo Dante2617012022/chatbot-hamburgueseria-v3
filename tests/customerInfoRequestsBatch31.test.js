@@ -177,3 +177,47 @@ test("14 - si despues del seguimiento agrega el ultimo producto consultado", asy
   assert.equal(confirmation.order.items.length, 1);
   assert.equal(confirmation.order.items[0].productId, "big_camdis_triple");
 });
+
+test("15 - si agrega confirma el ultimo producto consultado por precio", async () => {
+  resetSessionsForTests();
+
+  const phone = "4000000015";
+
+  await send(phone, "a que costo esta la onion doble");
+  await send(phone, "y la americana triple?");
+  const confirmation = await send(phone, "si agrega");
+
+  assert.equal(confirmation.parsedMessage.intent, "CONFIRMAR_SUGERENCIA_PRODUCTO");
+  assert.match(confirmation.reply, /Americana 2\.0 triple/i);
+  assert.equal(confirmation.order.items.length, 1);
+  assert.equal(confirmation.order.items[0].productId, "americana_20_triple");
+});
+
+test("16 - pedido nuevo despues de consultar precio no se toma como seguimiento de precio", async () => {
+  resetSessionsForTests();
+
+  const phone = "4000000016";
+
+  await send(phone, "a que costo esta la onion doble");
+  await send(phone, "pasame el menu por favor");
+  const result = await send(phone, "preparame una araka simple porfa");
+
+  assert.notEqual(result.parsedMessage.intent, "CONSULTAR_PRECIO_PRODUCTO");
+  assert.match(result.reply, /1 x Araka simple/i);
+  assert.equal(result.order.items.length, 1);
+  assert.equal(result.order.items[0].productId, "araka_simple");
+});
+
+test("17 - quiero producto despues de consultar precio no se toma como seguimiento", async () => {
+  resetSessionsForTests();
+
+  const phone = "4000000017";
+
+  await send(phone, "a que costo esta la onion doble");
+  const result = await send(phone, "quiero una araka simple porfa");
+
+  assert.notEqual(result.parsedMessage.intent, "CONSULTAR_PRECIO_PRODUCTO");
+  assert.match(result.reply, /1 x Araka simple/i);
+  assert.equal(result.order.items.length, 1);
+  assert.equal(result.order.items[0].productId, "araka_simple");
+});
