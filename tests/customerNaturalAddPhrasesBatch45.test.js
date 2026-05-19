@@ -17,47 +17,123 @@ async function send(phone, messageText) {
   return handleCustomerMessage({ customerPhone: phone, messageText });
 }
 
-test("1 - me preparan 2 americanas triples", async () => {
-  const parsed = await parseCustomerMessage("hola me preparan 2 americanas triples");
+async function assertAddProduct(messageText, { quantity, productId }) {
+  const parsed = await parseCustomerMessage(messageText);
 
   assert.equal(parsed.intent, CUSTOMER_INTENT.ADD_PRODUCT);
-  assert.equal(parsed.entities.quantity, 2);
-  assert.equal(parsed.entities.product.id, "americana_2_0_triple");
+  assert.equal(parsed.entities.quantity, quantity);
+  assert.equal(parsed.entities.product.id, productId);
+}
+
+test("1 - frases con preparar", async () => {
+  await assertAddProduct("hola me preparan 2 americanas triples", {
+    quantity: 2,
+    productId: "americana_2_0_triple"
+  });
+
+  await assertAddProduct("me preparas una onion doble", {
+    quantity: 1,
+    productId: "onion_doble"
+  });
+
+  await assertAddProduct("me preparás una onion doble", {
+    quantity: 1,
+    productId: "onion_doble"
+  });
+
+  await assertAddProduct("preparame una onion doble", {
+    quantity: 1,
+    productId: "onion_doble"
+  });
+
+  await assertAddProduct("prepárame una crispy triple", {
+    quantity: 1,
+    productId: "camdis_crispy_triple"
+  });
 });
 
-test("2 - preparame una onion doble", async () => {
-  const parsed = await parseCustomerMessage("preparame una onion doble");
+test("2 - frases con armar", async () => {
+  await assertAddProduct("me arman dos bacon triples", {
+    quantity: 2,
+    productId: "bacon_cheese_triple"
+  });
 
-  assert.equal(parsed.intent, CUSTOMER_INTENT.ADD_PRODUCT);
-  assert.equal(parsed.entities.quantity, 1);
-  assert.equal(parsed.entities.product.id, "onion_doble");
+  await assertAddProduct("me armas una big camdis doble", {
+    quantity: 1,
+    productId: "big_camdis_doble"
+  });
+
+  await assertAddProduct("me armás una big camdis doble", {
+    quantity: 1,
+    productId: "big_camdis_doble"
+  });
+
+  await assertAddProduct("armame una cuarto a simple", {
+    quantity: 1,
+    productId: "cuarto_a_simple"
+  });
+
+  await assertAddProduct("ármame una araka triple", {
+    quantity: 1,
+    productId: "araka_triple"
+  });
 });
 
-test("3 - me arman dos bacon triples", async () => {
-  const parsed = await parseCustomerMessage("me arman dos bacon triples");
+test("3 - frases con hacer", async () => {
+  await assertAddProduct("me hacen dos cheese dobles", {
+    quantity: 2,
+    productId: "cheeseburger_doble"
+  });
 
-  assert.equal(parsed.intent, CUSTOMER_INTENT.ADD_PRODUCT);
-  assert.equal(parsed.entities.quantity, 2);
-  assert.equal(parsed.entities.product.id, "bacon_cheese_triple");
+  await assertAddProduct("me haces dos cheese dobles", {
+    quantity: 2,
+    productId: "cheeseburger_doble"
+  });
+
+  await assertAddProduct("me hacés dos cheese dobles", {
+    quantity: 2,
+    productId: "cheeseburger_doble"
+  });
+
+  await assertAddProduct("haceme dos triple l dobles", {
+    quantity: 2,
+    productId: "triple_l_doble"
+  });
 });
 
-test("4 - añade una lata", async () => {
-  const parsed = await parseCustomerMessage("añade una lata");
+test("4 - frases heredadas agrega/sumale/pone", async () => {
+  await assertAddProduct("añade una lata", {
+    quantity: 1,
+    productId: "lata"
+  });
 
-  assert.equal(parsed.intent, CUSTOMER_INTENT.ADD_PRODUCT);
-  assert.equal(parsed.entities.quantity, 1);
-  assert.equal(parsed.entities.product.id, "lata");
+  await assertAddProduct("anade una lata", {
+    quantity: 1,
+    productId: "lata"
+  });
+
+  await assertAddProduct("adiciona dos nuggets x6", {
+    quantity: 2,
+    productId: "nuggets_x6"
+  });
+
+  await assertAddProduct("pone una lata", {
+    quantity: 1,
+    productId: "lata"
+  });
+
+  await assertAddProduct("poneme una lata", {
+    quantity: 1,
+    productId: "lata"
+  });
+
+  await assertAddProduct("ponele una lata", {
+    quantity: 1,
+    productId: "lata"
+  });
 });
 
-test("5 - adiciona dos nuggets x6", async () => {
-  const parsed = await parseCustomerMessage("adiciona dos nuggets x6");
-
-  assert.equal(parsed.intent, CUSTOMER_INTENT.ADD_PRODUCT);
-  assert.equal(parsed.entities.quantity, 2);
-  assert.equal(parsed.entities.product.id, "nuggets_x6");
-});
-
-test("6 - flujo real agrega americanas triples", async () => {
+test("5 - flujo real agrega americanas triples", async () => {
   resetSessionsForTests();
 
   const result = await send("4083000001", "hola me preparan 2 americanas triples");
