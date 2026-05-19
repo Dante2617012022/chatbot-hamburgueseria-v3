@@ -199,12 +199,20 @@ export async function findBestProduct(
 }
 
 function normalizeVariantCorrectionQuery(normalizedQuery) {
-  return String(normalizedQuery || "")
+  const cleanedQuery = String(normalizedQuery || "")
     .replace(/\bcomun\b/g, "simple")
     .replace(/\bcomún\b/g, "simple")
     .replace(/\s+no\s+(doble|triple)\b/g, "")
+    .replace(/\bcamdis\s+americana\b/g, "americana")
+    .replace(/\bhamburguesa\s+americana\b/g, "americana")
     .replace(/\s+/g, " ")
     .trim();
+
+  if (cleanedQuery === "americana" || cleanedQuery === "americanas") {
+    return "americana simple";
+  }
+
+  return cleanedQuery;
 }
 
 async function buildAvailableSuggestions(normalizedQuery, maxSuggestions) {
@@ -217,7 +225,6 @@ async function buildAvailableSuggestions(normalizedQuery, maxSuggestions) {
     .map((result) => ({
       id: result.item.id,
       nombre: result.item.nombre,
-      precio: result.item.precio,
-      confidence: scoreToConfidence(result.score)
+      precio: scoreToConfidence(result.score)
     }));
 }
