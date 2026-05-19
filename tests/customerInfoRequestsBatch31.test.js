@@ -102,7 +102,7 @@ test("8 - si confirma despues de consultar precio agrega ese producto", async ()
   assert.equal(confirmation.parsedMessage.intent, "CONFIRMAR_SUGERENCIA_PRODUCTO");
   assert.match(confirmation.reply, /Americana 2\.0 doble/i);
   assert.equal(confirmation.order.items.length, 1);
-  assert.equal(confirmation.order.items[0].productId, "americana_doble");
+  assert.equal(confirmation.order.items[0].productId, "americana_20_doble");
 });
 
 test("9 - si confirma precio de crispy triple agrega ese producto", async () => {
