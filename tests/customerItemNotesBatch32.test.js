@@ -42,17 +42,18 @@ test("3 - agrega producto con nota sin cebolla", async () => {
   assert.deepEqual(result.order.items[0].notes, ["sin cebolla"]);
 });
 
-test("4 - combina notas y extras como observacion sin cambiar precio", async () => {
+test("4 - combina nota sin salsa y extra queso cobrable sin generar salsa extra", async () => {
   resetSessionsForTests();
 
   const result = await send("4010000004", "preparame una bacon doble sin salsa extra queso");
 
   assert.match(result.reply, /1 x Bacon cheese doble/i);
   assert.match(result.reply, /Notas: sin salsa, extra queso/i);
+  assert.match(result.reply, /Extra: Queso extra/i);
   assert.doesNotMatch(result.reply, /salsa extra/i);
   assert.deepEqual(result.order.items[0].notes, ["sin salsa", "extra queso"]);
   assert.equal(result.order.items[0].unitPrice, 10000);
-  assert.equal(result.order.total, 10000);
+  assert.equal(result.order.total, 11000);
 });
 
 test("5 - mismo producto con notas distintas queda en lineas separadas", async () => {

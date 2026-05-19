@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 
 import { getProductById } from "../menu/menuRepository.js";
+import {
+  buildChargeableExtrasFromNotes,
+  calculateItemSubtotal,
+  normalizeExtras
+} from "./chargeableExtrasService.js";
 import { ORDER_STATUS } from "./orderStatus.js";
 import {
   assertValidOrder,
@@ -58,18 +63,21 @@ export async function addProductToOrder(
   }
 
   const normalizedNotes = normalizeNotes(notes);
+  const extras = normalizeExtras(await buildChargeableExtrasFromNotes(normalizedNotes));
 
   const existingItem = order.items.find(
     (item) =>
       item.productId === product.id &&
-      JSON.stringify(item.notes) === JSON.stringify(normalizedNotes)
+      JSON.stringify(item.notes) === JSON.stringify(normalizedNotes) &&
+      JSON.stringify(normalizeExtras(item.extras)) === JSON.stringify(extras)
   );
 
   if (existingItem) {
     existingItem.quantity += quantity;
-    existingItem.subtotal = existingItem.quantity * existingItem.unitPrice;
+    existingItem.extras = extras;
+    existingItem.subtotal = calculateItemSubtotal(existingItem);
   } else {
-    order.items.push({
+    const item = {
       id: randomUUID(),
       productId: product.id,
       name: product.nombre,
@@ -77,8 +85,12 @@ export async function addProductToOrder(
       unitPrice: product.precio,
       quantity,
       notes: normalizedNotes,
-      subtotal: product.precio * quantity
-    });
+      extras,
+      subtotal: 0
+    };
+
+    item.subtotal = calculateItemSubtotal(item);
+    order.items.push(item);
   }
 
   order.status = ORDER_STATUS.BUILDING;
@@ -108,7 +120,7 @@ export function removeProductFromOrder(order, productId, { quantity = null } = {
   } else {
     assertValidQuantity(quantity);
     item.quantity -= quantity;
-    item.subtotal = item.quantity * item.unitPrice;
+    item.subtotal = calculateItemSubtotal(item);
   }
 
   if (order.items.length === 0) {
@@ -139,7 +151,7 @@ export function updateItemQuantity(order, productId, quantity) {
   }
 
   item.quantity = quantity;
-  item.subtotal = item.unitPrice * quantity;
+  item.subtotal = calculateItemSubtotal(item);
 
   recalculateOrder(order);
   touchOrder(order);
@@ -291,6 +303,8 @@ export function recalculateOrder(order) {
   assertValidOrder(order);
 
   order.subtotal = order.items.reduce((total, item) => {
+    item.extras = normalizeExtras(item.extras);
+    item.subtotal = calculateItemSubtotal(item);
     return total + item.subtotal;
   }, 0);
 
