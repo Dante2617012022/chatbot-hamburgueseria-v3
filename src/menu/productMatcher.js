@@ -225,6 +225,7 @@ async function buildAvailableSuggestions(normalizedQuery, maxSuggestions) {
     .map((result) => ({
       id: result.item.id,
       nombre: result.item.nombre,
-      precio: scoreToConfidence(result.score)
+      precio: result.item.precio,
+      confidence: scoreToConfidence(result.score)
     }));
 }
