@@ -4,6 +4,7 @@ import { parseMultiProductMessage } from "../ai/multiProductParser.js";
 import { tryHandleAdvancedOrderEdit } from "../orders/orderEditService.js";
 import { extractNotesAndCleanMessage } from "../orders/itemNotesService.js";
 import { handleCustomerInfoRequest } from "./customerInfoRequestService.js";
+import { handleTanda47Message } from "./tanda47Service.js";
 import {
   handleMultipleProductClarificationRequest,
   handlePendingMultiProductClarification
@@ -163,6 +164,25 @@ export async function handleCustomerMessage({
 
   if (itemNotes.length > 0 && itemNoteData.cleanMessageText) {
     messageText = itemNoteData.cleanMessageText;
+  }
+
+  const tanda47Result = handleTanda47Message({
+    order,
+    messageText,
+    buildNextStepPrompt
+  });
+
+  if (tanda47Result) {
+    saveMessageEvent({
+      customerPhone,
+      direction: "IN",
+      text: messageText,
+      intent: tanda47Result.parsedMessage.intent,
+      status: tanda47Result.parsedMessage.status,
+      payload: tanda47Result.parsedMessage
+    });
+
+    return tanda47Result;
   }
 
   const customerInfoRequestResult = await handleCustomerInfoRequest({
