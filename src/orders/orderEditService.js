@@ -223,31 +223,59 @@ function parseChangeRequest(text) {
 }
 
 function parseImplicitVariantCorrection(text) {
-  const normalized = normalizeText(text);
+  const normalized = normalizeText(text)
+    .replace(/^(?:\d+|un|una|uno|dos|tres|cuatro|cinco)\s+/, "")
+    .replace(/\bcomun\b/g, "simple")
+    .replace(/\bcomún\b/g, "simple")
+    .replace(/\bsimples\b/g, "simple")
+    .replace(/\bdobles\b/g, "doble")
+    .replace(/\btriples\b/g, "triple")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  const simpleNoDoubleMatch = normalized.match(
-    /^(.+?)\s+(simple|comun|común)\s+no\s+(doble|triple)$/
+  const familyVariantNoVariantMatch = normalized.match(
+    /^(.+?)\s+(simple|doble|triple)\s+no\s+(simple|doble|triple)$/
   );
 
-  if (simpleNoDoubleMatch?.[1]) {
-    const familyQuery = cleanChangeQuery(simpleNoDoubleMatch[1]);
+  if (
+    familyVariantNoVariantMatch?.[1] &&
+    familyVariantNoVariantMatch[2] !== familyVariantNoVariantMatch[3]
+  ) {
+    const familyQuery = cleanChangeQuery(familyVariantNoVariantMatch[1]);
 
     return {
-      sourceQuery: `${familyQuery} ${simpleNoDoubleMatch[3]}`,
-      targetQuery: `${familyQuery} simple`
+      sourceQuery: `${familyQuery} ${familyVariantNoVariantMatch[3]}`,
+      targetQuery: `${familyQuery} ${familyVariantNoVariantMatch[2]}`
     };
   }
 
-  const noDoubleSimpleMatch = normalized.match(
-    /^(.+?)\s+no\s+(doble|triple),?\s*(simple|comun|común)$/
+  const familyNoVariantVariantMatch = normalized.match(
+    /^(.+?)\s+no\s+(simple|doble|triple),?\s*(simple|doble|triple)$/
   );
 
-  if (noDoubleSimpleMatch?.[1]) {
-    const familyQuery = cleanChangeQuery(noDoubleSimpleMatch[1]);
+  if (
+    familyNoVariantVariantMatch?.[1] &&
+    familyNoVariantVariantMatch[2] !== familyNoVariantVariantMatch[3]
+  ) {
+    const familyQuery = cleanChangeQuery(familyNoVariantVariantMatch[1]);
 
     return {
-      sourceQuery: `${familyQuery} ${noDoubleSimpleMatch[2]}`,
-      targetQuery: `${familyQuery} simple`
+      sourceQuery: `${familyQuery} ${familyNoVariantVariantMatch[2]}`,
+      targetQuery: `${familyQuery} ${familyNoVariantVariantMatch[3]}`
+    };
+  }
+
+  const bareVariantCorrectionMatch = normalized.match(
+    /^(?:era|eran|es|son)?\s*(simple|doble|triple)\s+no\s+(simple|doble|triple)$/
+  );
+
+  if (
+    bareVariantCorrectionMatch &&
+    bareVariantCorrectionMatch[1] !== bareVariantCorrectionMatch[2]
+  ) {
+    return {
+      sourceQuery: bareVariantCorrectionMatch[2],
+      targetQuery: bareVariantCorrectionMatch[1]
     };
   }
 
