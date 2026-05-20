@@ -46,18 +46,23 @@ export function handleTanda47Message({ order, messageText, buildNextStepPrompt =
 function parseTanda47Data(messageText) {
   const text = String(messageText || "");
   const normalizedFull = normalizeText(text);
+
+  if (shouldSkipTanda47(normalizedFull)) {
+    return emptyData();
+  }
+
   const hasSeparator = /[\n,]/.test(text);
   const hasExplicitName = /\b(me\s+llamo|mi\s+nombre\s+es)\b/i.test(text);
   const startsAsAddress = /^(direccion|dirección)\b/i.test(text.trim());
 
   if (!hasSeparator && !hasExplicitName && !startsAsAddress) {
-    return { hasData: false, customerName: null, deliveryType: null, deliveryAddress: null, paymentMethod: null };
+    return emptyData();
   }
 
   const parts = text.split(/[\n,]/).map((part) => part.trim()).filter(Boolean);
   const source = parts.length > 1 ? parts : [text];
   const allowStandaloneName = hasSeparator;
-  const data = { hasData: false, customerName: null, deliveryType: null, deliveryAddress: null, paymentMethod: null };
+  const data = emptyData();
 
   for (const part of source) {
     const low = normalizeText(part);
@@ -67,11 +72,11 @@ function parseTanda47Data(messageText) {
       data.hasData = true;
     }
 
-    if (/\b(delivery|delibery|delivwry|envio|domicilio)\b/.test(low)) {
+    if (/\b(delivery|delibery|delivwry|envio|domicilio)\b/.test(low) && !/\bno\s+delivery\b/.test(low)) {
       data.deliveryType = "DELIVERY";
       data.hasData = true;
     }
-    if (/\b(retiro|retirar|local)\b/.test(low)) {
+    if (/\b(retiro|retirar|local)\b/.test(low) && !/\bno\s+retiro\b/.test(low)) {
       data.deliveryType = "RETIRO";
       data.hasData = true;
     }
@@ -91,7 +96,7 @@ function parseTanda47Data(messageText) {
       continue;
     }
 
-    if (allowStandaloneName && !data.customerName && looksName(part) && !pay && !/\d/.test(part)) {
+    if (allowStandaloneName && !data.customerName && looksName(part) && !looksLikeCommandPart(low) && !pay && !/\d/.test(part)) {
       data.customerName = formatName(part);
       data.hasData = true;
     }
@@ -115,6 +120,26 @@ function parseTanda47Data(messageText) {
   }
 
   return data;
+}
+
+function emptyData() {
+  return { hasData: false, customerName: null, deliveryType: null, deliveryAddress: null, paymentMethod: null };
+}
+
+function shouldSkipTanda47(text) {
+  return (
+    /\b(no\s+esa\s+no|no\s+ese\s+no)\b/.test(text) ||
+    /\b(me\s+equivoque|me\s+equivoqué|perdon|perdón)\b/.test(text) ||
+    /\bera\b.*\bno\b/.test(text) ||
+    /\bno\s+confirmes?\b/.test(text) ||
+    /\b(no\s+confirmo|confirmo|confirmar|confirmado)\b/.test(text) ||
+    /\b(cambia|cambiame|cambiá|cambialo|cambiala|mejor)\b/.test(text) ||
+    /\b(agrega|agregame|agregale|sumale|sumame|poneme|pone|poné|mandame|sacame|saca|quita|quitame|dejame|deja|dejá)\b/.test(text)
+  );
+}
+
+function looksLikeCommandPart(text) {
+  return /^(ok|dale|listo|bueno|no|si|me|era|mejor|confirmo|confirmar|confirmado|dejame|deja|dejá|saca|sacame|quita|quitame|agrega|agregame|sumale|sumame|pone|poneme)\b/.test(text);
 }
 
 function parsePay(text) {
