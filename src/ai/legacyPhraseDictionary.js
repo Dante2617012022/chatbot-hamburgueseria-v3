@@ -15,7 +15,15 @@ export const LEGACY_ADD_KEYWORDS = [
   "me preparas",
   "me preparás",
   "me armás",
-  "me armas"
+  "me armas",
+  "me vendes",
+  "me vendés",
+  "vendeme",
+  "vendéme",
+  "te compro",
+  "compro",
+  "me podes vender",
+  "me podés vender"
 ];
 
 export const LEGACY_REMOVE_KEYWORDS = [
