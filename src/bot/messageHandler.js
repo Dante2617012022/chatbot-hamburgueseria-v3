@@ -344,7 +344,7 @@ export async function handleCustomerMessage({
     return {
       parsedMessage: advancedOrderEditResult.parsedMessage,
       order,
-      reply: advancedOrderEditResult.reply
+      reply: advancedOrderEditResult.reply + buildNextStepPrompt(order)
     };
   }
 
@@ -2221,6 +2221,7 @@ function normalizeCommonCustomerTypos(messageText) {
     .replace(/\bcamdiss\b/g, "camdis")
     .replace(/\btrple\b/g, "triple")
     .replace(/\btripl\b/g, "triple")
+    .replace(/\btiple\b/g, "triple")
     .replace(/\bdble\b/g, "doble")
     .replace(/\bgrnade\b/g, "grande")
     .replace(/\bgrnde\b/g, "grande")
