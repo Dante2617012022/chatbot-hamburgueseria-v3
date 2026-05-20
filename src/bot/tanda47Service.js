@@ -45,8 +45,18 @@ export function handleTanda47Message({ order, messageText, buildNextStepPrompt =
 
 function parseTanda47Data(messageText) {
   const text = String(messageText || "");
+  const normalizedFull = normalizeText(text);
+  const hasSeparator = /[\n,]/.test(text);
+  const hasExplicitName = /\b(me\s+llamo|mi\s+nombre\s+es)\b/i.test(text);
+  const startsAsAddress = /^(direccion|dirección)\b/i.test(text.trim());
+
+  if (!hasSeparator && !hasExplicitName && !startsAsAddress) {
+    return { hasData: false, customerName: null, deliveryType: null, deliveryAddress: null, paymentMethod: null };
+  }
+
   const parts = text.split(/[\n,]/).map((part) => part.trim()).filter(Boolean);
   const source = parts.length > 1 ? parts : [text];
+  const allowStandaloneName = hasSeparator;
   const data = { hasData: false, customerName: null, deliveryType: null, deliveryAddress: null, paymentMethod: null };
 
   for (const part of source) {
@@ -81,21 +91,21 @@ function parseTanda47Data(messageText) {
       continue;
     }
 
-    if (!data.customerName && looksName(part) && !pay && !/\d/.test(part)) {
+    if (allowStandaloneName && !data.customerName && looksName(part) && !pay && !/\d/.test(part)) {
       data.customerName = formatName(part);
       data.hasData = true;
     }
   }
 
   if (!data.paymentMethod) {
-    const pay = parsePay(normalizeText(text));
+    const pay = parsePay(normalizedFull);
     if (pay) {
       data.paymentMethod = pay;
       data.hasData = true;
     }
   }
 
-  if (!data.deliveryAddress) {
+  if (!data.deliveryAddress && startsAsAddress) {
     const addr = parseAddress(text);
     if (addr) {
       data.deliveryAddress = addr;
