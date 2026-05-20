@@ -5,6 +5,7 @@ import { tryHandleAdvancedOrderEdit } from "../orders/orderEditService.js";
 import { extractNotesAndCleanMessage } from "../orders/itemNotesService.js";
 import { handleCustomerInfoRequest } from "./customerInfoRequestService.js";
 import { handleTanda47Message } from "./tanda47Service.js";
+import { splitMixedRemoveAndAddText } from "./mixedActionTextService.js";
 import {
   handleMultipleProductClarificationRequest,
   handlePendingMultiProductClarification
@@ -302,6 +303,17 @@ export async function handleCustomerMessage({
 
   if (clearOrderResult) {
     return clearOrderResult;
+  }
+
+  const mixedRemoveAddResult = await handleMixedRemoveAddMessage({
+    customerPhone,
+    order,
+    messageText,
+    itemNotes
+  });
+
+  if (mixedRemoveAddResult) {
+    return mixedRemoveAddResult;
   }
 
   const advancedOrderEditResult = await tryHandleAdvancedOrderEdit({
@@ -840,6 +852,128 @@ function isProgressRequest(text) {
     /\b(que|qué)\s+(falta|sigue)\b/.test(text) ||
     /\b(como|cómo)\s+sigo\b/.test(text)
   );
+}
+
+async function handleMixedRemoveAddMessage({
+  customerPhone,
+  order,
+  messageText,
+  itemNotes = []
+}) {
+  const split = splitMixedRemoveAndAddText(messageText);
+
+  if (!split || !order?.items?.length) return null;
+
+  const removeResult = await tryHandleAdvancedOrderEdit({
+    order,
+    messageText: split.removeText
+  });
+
+  const addResult = await applyMixedAddOnlyAction({
+    order,
+    addText: split.addText,
+    itemNotes
+  });
+
+  if (!removeResult && !addResult) return null;
+
+  saveOrderSession(customerPhone, order);
+
+  const parsedMessage = {
+    rawText: messageText,
+    normalizedText: messageText,
+    intent: "MENSAJE_MIXTO_QUITAR_AGREGAR",
+    confidence: 1,
+    status: "OK",
+    entities: {
+      removeText: split.removeText,
+      addText: split.addText,
+      removeIntent: removeResult?.parsedMessage?.intent || null,
+      addIntent: addResult?.parsedMessage?.intent || null
+    },
+    replyHint: null
+  };
+
+  saveMessageEvent({
+    customerPhone,
+    direction: "IN",
+    text: messageText,
+    intent: parsedMessage.intent,
+    status: parsedMessage.status,
+    payload: parsedMessage
+  });
+
+  const parts = [
+    removeResult ? stripSummaryFromMixedReply(removeResult.reply) : null,
+    addResult ? addResult.reply : null
+  ].filter(Boolean);
+
+  return {
+    parsedMessage,
+    order,
+    reply:
+      parts.join("\n") +
+      "\n\n" +
+      formatOrderSummary(order) +
+      buildNextStepPrompt(order)
+  };
+}
+
+async function applyMixedAddOnlyAction({
+  order,
+  addText,
+  itemNotes = []
+}) {
+  const multiProductMessage = await parseMultiProductMessage(addText);
+
+  if (multiProductMessage.ok) {
+    for (const item of multiProductMessage.items) {
+      await addProductToOrder(order, item.product.id, {
+        quantity: item.quantity,
+        notes: itemNotes
+      });
+    }
+
+    return {
+      handled: true,
+      parsedMessage: { intent: "AGREGAR_PRODUCTOS_MIXTO" },
+      reply:
+        "Agregué a tu pedido:\n" +
+        multiProductMessage.items
+          .map((item) => `- ${item.quantity} x ${item.product.nombre}`)
+          .join("\n") +
+        buildPartialMultiProductWarning(multiProductMessage.failedItems)
+    };
+  }
+
+  let parsedProductMessage = await parseCustomerMessage(addText);
+  parsedProductMessage = applyMessageCorrections(parsedProductMessage, addText);
+
+  if (
+    parsedProductMessage.intent !== CUSTOMER_INTENT.ADD_PRODUCT ||
+    !parsedProductMessage.entities?.product
+  ) {
+    return null;
+  }
+
+  await addProductToOrder(order, parsedProductMessage.entities.product.id, {
+    quantity: parsedProductMessage.entities.quantity || 1,
+    notes: itemNotes
+  });
+
+  return {
+    handled: true,
+    parsedMessage: parsedProductMessage,
+    reply:
+      "Agregué a tu pedido:\n" +
+      `- ${parsedProductMessage.entities.quantity || 1} x ${parsedProductMessage.entities.product.nombre}`
+  };
+}
+
+function stripSummaryFromMixedReply(reply) {
+  return String(reply || "")
+    .split("\n\n*Resumen de tu pedido*")[0]
+    .trim();
 }
 
 async function handleCombinedCustomerMessage({
