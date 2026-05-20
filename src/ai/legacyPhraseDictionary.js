@@ -85,7 +85,25 @@ export const LEGACY_MENU_KEYWORDS = [
   "qué venden",
   "pasa la carta",
   "pasá la carta",
-  "pasa el listado"
+  "pasa el listado",
+  "mostrame las opciones",
+  "mostrá las opciones",
+  "me mostras las opciones",
+  "me mostrás las opciones",
+  "que opciones tienen",
+  "qué opciones tienen",
+  "que opciones manejan",
+  "qué opciones manejan",
+  "que hay para comer",
+  "qué hay para comer",
+  "que recomiendan",
+  "qué recomiendan",
+  "tenes carta",
+  "tenés carta",
+  "tenes menu",
+  "tenés menú",
+  "mandame la carta",
+  "enviame la carta"
 ];
 
 export const LEGACY_TOTAL_KEYWORDS = [
@@ -156,7 +174,20 @@ export const LEGACY_HUMAN_KEYWORDS = [
   "quiero un operador",
   "necesito un humano",
   "necesito un operador",
-  "necesito hablar con alguien"
+  "necesito hablar con alguien",
+  "me atiende alguien",
+  "me atiende una persona",
+  "me puede atender alguien",
+  "hay alguien atendiendo",
+  "hay alguien",
+  "hay vendedor",
+  "vendedor",
+  "quiero hablar con el local",
+  "hablar con el local",
+  "atendeme",
+  "atiendanme",
+  "atiéndanme",
+  "necesito ayuda de una persona"
 ];
 
 export const LEGACY_LOCATION_KEYWORDS = [
@@ -180,8 +211,31 @@ export const LEGACY_LOCATION_KEYWORDS = [
   "cómo los encuentro",
   "pasa direccion",
   "pasa dirección",
+  "pasame la direccion",
+  "pasame la dirección",
+  "pasame la dire",
+  "pasa la dire",
   "me pasas la direccion",
-  "me pasás la dirección"
+  "me pasás la dirección",
+  "me pasas la dire",
+  "me pasás la dire",
+  "mandame ubicacion",
+  "mandame ubicación",
+  "enviame ubicacion",
+  "enviame ubicación",
+  "me mandas ubicacion",
+  "me mandás ubicación",
+  "me compartis ubicacion",
+  "me compartís ubicación",
+  "me compartis el maps",
+  "me compartís el maps",
+  "google maps",
+  "maps",
+  "mapa",
+  "cual es la direccion",
+  "cuál es la dirección",
+  "a donde estan",
+  "a dónde están"
 ];
 
 export const LEGACY_PICKUP_KEYWORDS = [
