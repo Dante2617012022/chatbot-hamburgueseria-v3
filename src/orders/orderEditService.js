@@ -2,6 +2,7 @@ import { findBestProduct } from "../menu/productMatcher.js";
 import { normalizeText } from "../utils/textNormalizer.js";
 import { addProductToOrder, recalculateOrder, removeProductFromOrder } from "./orderService.js";
 import { formatOrderSummary } from "./orderFormatter.js";
+import { tryHandleCategoryQuantityRemove } from "./categoryRemoveService.js";
 
 const NUMBER_WORDS = new Map([
   ["un", 1],
@@ -78,6 +79,16 @@ export async function tryHandleAdvancedOrderEdit({ order, messageText }) {
       intent: "DEJAR_SOLO_HAMBURGUESAS",
       replyTitle: "Listo, dejé solo las hamburguesas en tu pedido."
     });
+  }
+
+  const categoryRemoveResult = await tryHandleCategoryQuantityRemove({
+    order,
+    messageText,
+    normalizedText
+  });
+
+  if (categoryRemoveResult) {
+    return categoryRemoveResult;
   }
 
   const legacyRemoveResult = await tryHandleLegacyRemove({
