@@ -23,7 +23,23 @@ export const LEGACY_ADD_KEYWORDS = [
   "te compro",
   "compro",
   "me podes vender",
-  "me podés vender"
+  "me podés vender",
+  "y un",
+  "y una",
+  "y dos",
+  "y tres",
+  "y cuatro",
+  "y cinco",
+  "y 1",
+  "y 2",
+  "y 3",
+  "y 4",
+  "y 5",
+  "e un",
+  "e una",
+  "e dos",
+  "e 1",
+  "e 2"
 ];
 
 export const LEGACY_REMOVE_KEYWORDS = [
