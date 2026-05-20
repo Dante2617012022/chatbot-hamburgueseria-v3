@@ -2,6 +2,20 @@ import { CUSTOMER_INTENT } from "./intentTypes.js";
 import { normalizeText } from "../utils/textNormalizer.js";
 
 export function applyMessageCorrections(parsedMessage, messageText) {
+  if (isResetCommand(messageText)) {
+    return {
+      rawText: messageText || "",
+      normalizedText: normalizeText(messageText),
+      intent: CUSTOMER_INTENT.CANCEL_ORDER,
+      confidence: 1,
+      status: "OK",
+      entities: {
+        reason: "RESET_COMMAND"
+      },
+      replyHint: null
+    };
+  }
+
   const deliveryAddress = extractDeliveryAddressFromNaturalMessage(messageText);
 
   if (deliveryAddress) {
@@ -33,6 +47,18 @@ export function applyMessageCorrections(parsedMessage, messageText) {
   }
 
   return parsedMessage;
+}
+
+function isResetCommand(messageText) {
+  const text = normalizeText(messageText);
+
+  return [
+    "reset",
+    "reiniciar",
+    "reiniciar pedido",
+    "resetear",
+    "resetear pedido"
+  ].includes(text);
 }
 
 function extractDeliveryAddressFromNaturalMessage(messageText) {
