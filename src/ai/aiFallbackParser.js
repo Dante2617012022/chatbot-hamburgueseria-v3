@@ -4,6 +4,7 @@ import { normalizeText } from "../utils/textNormalizer.js";
 import { CUSTOMER_INTENT, isValidCustomerIntent } from "./intentTypes.js";
 import { validateParsedMessage } from "./schemas.js";
 import { createStructuredIntentCompletion } from "./openAiClient.js";
+import { buildAiFallbackPromptInput } from "./aiFallbackPrompt.js";
 
 const FALLBACK_STATUSES = new Set([
   "NO_MATCH",
@@ -107,29 +108,8 @@ async function callOpenAiIntentParser(rawText) {
     })
     .join("\n");
 
-  const input = [
-    {
-      role: "system",
-      content:
-        "Sos un parser estricto de mensajes de WhatsApp para una hamburguesería. " +
-        "Devolvé solamente JSON válido siguiendo el schema. " +
-        "No inventes productos, precios, promociones ni estados. " +
-        "Si el cliente pide un producto, devolvé productQuery con el nombre más probable del catálogo. " +
-        "Devolvé resolution SAFE_MATCH si estás seguro, AMBIGUOUS si hay varias opciones, INCOMPLETE si falta variante/tamaño, INVALID si no corresponde. " +
-        "Si no estás seguro, usá intent NO_ENTENDIDO y confidence baja. " +
-        "No confirmes ni canceles pedidos: esas acciones las maneja el sistema determinístico."
-    },
-    {
-      role: "user",
-      content:
-        `Mensaje del cliente:\n${rawText}\n\n` +
-        `Catálogo disponible para reconocer nombres:\n${catalog}\n\n` +
-        "Interpretá intención, cantidad, producto, entrega y forma de pago."
-    }
-  ];
-
   return createStructuredIntentCompletion({
-    input,
+    input: buildAiFallbackPromptInput({ rawText, catalog }),
     schema: AI_INTENT_SCHEMA
   });
 }
