@@ -1643,11 +1643,27 @@ function isPaymentLinkRequest(text) {
       "ya esta",
       "ya está",
       "como pago",
-      "cómo pago"
+      "cómo pago",
+      "dale para pagar",
+      "dale pasame el link",
+      "pasame para pagar",
+      "mandame para pagar",
+      "enviame para pagar",
+      "generame el link",
+      "generáme el link",
+      "cerrame el pedido",
+      "cerra el pedido",
+      "cerrá el pedido",
+      "cerralo",
+      "cerralo y cobrame",
+      "quiero abonar",
+      "abonar",
+      "abonarlo"
     ].includes(text) ||
-    /\b(pasame|pasar|mandame|manda|enviame|envia|genera|generá)\b.*\b(link|pago|pagar)\b/.test(text) ||
-    /\b(dame|necesito|quiero)\b.*\b(pagar|link|pago)\b/.test(text) ||
-    /\b(para\s+pagar|link\s+de\s+pago|link\s+mercado\s+pago)\b/.test(text)
+    /\b(pasame|pasar|mandame|manda|enviame|envia|genera|generá|generame|generáme)\b.*\b(link|pago|pagar|abonar|cobrar)\b/.test(text) ||
+    /\b(dame|necesito|quiero)\b.*\b(pagar|abonar|link|pago)\b/.test(text) ||
+    /\b(cerrame|cerra|cerrá|cerralo|cerrar|finaliza|finalizá|finalizalo)\b.*\b(pedido|orden|pago|link|pagar|abonar|cobrar)\b/.test(text) ||
+    /\b(para\s+pagar|para\s+abonar|link\s+de\s+pago|link\s+mercado\s+pago)\b/.test(text)
   );
 }
 
