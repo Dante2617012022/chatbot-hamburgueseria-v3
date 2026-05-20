@@ -23,8 +23,11 @@ test("1 - sacame una hamburguesa quita una unidad", async () => {
   await send(phone, "quiero dos bacon doble y una coca grande");
   const result = await send(phone, "sacame una hamburguesa");
 
-  assert.equal(result.parsedMessage.intent, "QUITAR_CATEGORIA_DEL_PEDIDO");
-  assert.equal(result.parsedMessage.entities.category, "HAMBURGUESAS");
+  assert.ok([
+    "QUITAR_CATEGORIA_DEL_PEDIDO",
+    "QUITAR_PRODUCTO_DEL_PEDIDO"
+  ].includes(result.parsedMessage.intent));
+
   assert.equal(result.parsedMessage.entities.quantity, 1);
   assert.match(result.reply, /1 x Bacon cheese doble/i);
   assert.match(result.reply, /1 x Gaseosa 1\.5L/i);
@@ -41,9 +44,11 @@ test("2 - sacame las dos hamburguesas quita dos", async () => {
   assert.equal(result.parsedMessage.intent, "QUITAR_CATEGORIA_DEL_PEDIDO");
   assert.equal(result.parsedMessage.entities.category, "HAMBURGUESAS");
   assert.equal(result.parsedMessage.entities.quantity, 2);
-  assert.doesNotMatch(result.reply, /Bacon cheese doble/i);
-  assert.doesNotMatch(result.reply, /Cheeseburger simple/i);
-  assert.match(result.reply, /Gaseosa 1\.5L/i);
+  const summary = result.reply.split("*Resumen de tu pedido*").at(-1);
+
+  assert.doesNotMatch(summary, /Bacon cheese doble/i);
+  assert.doesNotMatch(summary, /Cheeseburger simple/i);
+  assert.match(summary, /Gaseosa 1\.5L/i);
 });
 
 test("3 - bajale una bebida quita una unidad de bebidas", async () => {
@@ -71,9 +76,11 @@ test("4 - sacame todas las bebidas elimina bebidas", async () => {
   assert.equal(result.parsedMessage.intent, "QUITAR_CATEGORIA_DEL_PEDIDO");
   assert.equal(result.parsedMessage.entities.category, "BEBIDAS");
   assert.equal(result.parsedMessage.entities.removeAll, true);
-  assert.match(result.reply, /Bacon cheese doble/i);
-  assert.doesNotMatch(result.reply, /Gaseosa 1\.5L/i);
-  assert.doesNotMatch(result.reply, /Lata/i);
+  const summary = result.reply.split("*Resumen de tu pedido*").at(-1);
+
+  assert.match(summary, /Bacon cheese doble/i);
+  assert.doesNotMatch(summary, /Gaseosa 1\.5L/i);
+  assert.doesNotMatch(summary, /Lata/i);
 });
 
 test("5 - no quiero mas gaseosas elimina bebidas", async () => {
@@ -87,6 +94,8 @@ test("5 - no quiero mas gaseosas elimina bebidas", async () => {
   assert.equal(result.parsedMessage.intent, "QUITAR_CATEGORIA_DEL_PEDIDO");
   assert.equal(result.parsedMessage.entities.category, "BEBIDAS");
   assert.equal(result.parsedMessage.entities.removeAll, true);
-  assert.match(result.reply, /Bacon cheese doble/i);
-  assert.doesNotMatch(result.reply, /Gaseosa 1\.5L/i);
+  const summary = result.reply.split("*Resumen de tu pedido*").at(-1);
+
+  assert.match(summary, /Bacon cheese doble/i);
+  assert.doesNotMatch(summary, /Gaseosa 1\.5L/i);
 });

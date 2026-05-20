@@ -118,7 +118,13 @@ function parseCategoryQuantityRemoveRequest(normalizedText) {
 
   if (!body) return null;
 
-  body = stripCategoryRemoveFiller(body);
+  body = normalizeText(body)
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (/\s+(?:y|e)\s+|,/.test(body)) return null;
+
+  body = stripLeadingNonQuantityArticles(body);
 
   const allMatch = body.match(
     /^(?:todo|toda|todos|todas|totalidad|total|completo|completa|completos|completas)\b\s*(.*)$/
@@ -156,6 +162,24 @@ function parseCategoryQuantityRemoveRequest(normalizedText) {
   };
 }
 
+function stripLeadingNonQuantityArticles(value) {
+  let text = normalizeText(value)
+    .replace(/\s+/g, " ")
+    .trim();
+
+  let previous = "";
+
+  while (text && text !== previous) {
+    previous = text;
+    text = text
+      .replace(/^(?:de\s+)?(?:la|el|las|los)\s+/, "")
+      .replace(/^(?:de\s+)/, "")
+      .trim();
+  }
+
+  return text;
+}
+
 function stripCategoryRemoveFiller(value) {
   let text = normalizeText(value)
     .replace(/\s+/g, " ")
@@ -181,7 +205,7 @@ function resolveRemoveCategory(value) {
     return { category: "HAMBURGUESAS", predicate: isBurgerItem };
   }
 
-  if (/\b(gaseosa|gaseosas|bebida|bebidas|coca|cocas|pepsi|pepsis|sprite|sprites|fanta|fantas|lata|latas)\b/.test(text)) {
+  if (/\b(gaseosas|bebida|bebidas|cocas|pepsis|sprites|fantas)\b/.test(text)) {
     return { category: "BEBIDAS", predicate: isDrinkItem };
   }
 
