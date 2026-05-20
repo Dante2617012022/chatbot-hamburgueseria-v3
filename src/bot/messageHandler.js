@@ -344,7 +344,7 @@ export async function handleCustomerMessage({
     return {
       parsedMessage: advancedOrderEditResult.parsedMessage,
       order,
-      reply: advancedOrderEditResult.reply
+      reply: advancedOrderEditResult.reply + buildNextStepPrompt(order)
     };
   }
 
