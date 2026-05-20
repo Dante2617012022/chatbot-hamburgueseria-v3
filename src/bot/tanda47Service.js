@@ -129,6 +129,7 @@ function emptyData() {
 function shouldSkipTanda47(text) {
   return (
     /\b(no\s+esa\s+no|no\s+ese\s+no)\b/.test(text) ||
+    /\bno\s+(la|el)?\s*(simple|doble|triple)\s+no\b/.test(text) ||
     /\b(me\s+equivoque|me\s+equivoqué|perdon|perdón)\b/.test(text) ||
     /\bera\b.*\bno\b/.test(text) ||
     /\bno\s+confirmes?\b/.test(text) ||
@@ -139,7 +140,7 @@ function shouldSkipTanda47(text) {
 }
 
 function looksLikeCommandPart(text) {
-  return /^(ok|dale|listo|bueno|no|si|me|era|mejor|confirmo|confirmar|confirmado|dejame|deja|dejá|saca|sacame|quita|quitame|agrega|agregame|sumale|sumame|pone|poneme)\b/.test(text);
+  return /^(ok|dale|listo|bueno|no|si|me|era|mejor|confirmo|confirmar|confirmado|dejame|deja|dejá|saca|sacame|quita|quitame|agrega|agregame|sumale|sumame|pone|poneme|la|el|las|los)\b/.test(text);
 }
 
 function parsePay(text) {
