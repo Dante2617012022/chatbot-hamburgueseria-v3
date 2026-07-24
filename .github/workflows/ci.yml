@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        env:
+          NODE_ENV: test
+          RATE_LIMIT_ENABLED: "false"
+          ENABLE_WHATSAPP: "false"
+          ENABLE_AI_FALLBACK: "false"
+          MERCADOPAGO_DRY_RUN: "true"
+          MERCADOPAGO_REQUIRE_WEBHOOK_SIGNATURE: "false"
+          DATABASE_PATH: data/ci-test.sqlite
+          MENU_PATH: data/menu.json
+          OWNER_PHONE: 5490000000000
+        run: npm test
