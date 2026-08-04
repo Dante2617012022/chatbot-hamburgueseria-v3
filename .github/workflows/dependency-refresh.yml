@@ -34,7 +34,12 @@ jobs:
         run: npm install --save-exact @whiskeysockets/baileys@6.7.22 --ignore-scripts
 
       - name: Apply compatible audit fixes
-        run: npm audit fix --ignore-scripts
+        shell: bash
+        run: |
+          # npm audit fix returns 1 while moderate findings remain behind a
+          # breaking Mercado Pago upgrade. The strict high/critical gate below
+          # remains authoritative for this maintenance PR.
+          npm audit fix --ignore-scripts || true
 
       - name: Reinstall from refreshed lockfile
         run: npm ci
@@ -52,13 +57,18 @@ jobs:
           OWNER_PHONE: 5490000000000
         run: npm test
 
-      - name: Enforce production audit threshold
+      - name: Enforce production high and critical threshold
         run: npm audit --omit=dev --audit-level=high
+
+      - name: Record remaining moderate advisory
+        shell: bash
+        run: npm audit --omit=dev --json > dependency-audit.json || true
 
       - name: Commit refreshed dependencies and remove bootstrap workflow
         shell: bash
         run: |
           git rm .github/workflows/dependency-refresh.yml
+          rm -f dependency-audit.json
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
