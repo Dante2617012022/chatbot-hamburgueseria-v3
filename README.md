@@ -181,4 +181,4 @@ Este repositorio se publica con fines educativos, de evaluación técnica y mejo
 ## Autor
 
 **Dante Gabriel Balbuena Atar**  
-Técnico en Ciberseguridad orientado a oportunidades junior en SOC, AppSec y DevSecOps, con experiencia previa en soporte técnico, telecomunicaciones y gestión de incidentes.
+Estudiante avanzado de la Tecnicatura Universitaria en Ciberseguridad, orientado a oportunidades junior en SOC, AppSec y DevSecOps, con experiencia previa en soporte técnico, telecomunicaciones y gestión de incidentes.
