@@ -1,9 +1,8 @@
 name: Refresh audited dependencies
 
 on:
-  push:
-    branches:
-      - portfolio/security-hygiene-20260804
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
@@ -14,12 +13,12 @@ concurrency:
 
 jobs:
   refresh:
-    if: ${{ !contains(github.event.head_commit.message, 'chore(deps): refresh audited dependencies') }}
+    if: ${{ github.event.pull_request.head.ref == 'portfolio/security-hygiene-20260804' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
     steps:
-      - name: Checkout branch
+      - name: Checkout source branch
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: portfolio/security-hygiene-20260804
@@ -34,7 +33,7 @@ jobs:
       - name: Install patched Baileys legacy release
         run: npm install --save-exact @whiskeysockets/baileys@6.7.22 --ignore-scripts
 
-      - name: Apply non-breaking audit fixes
+      - name: Apply compatible audit fixes
         run: npm audit fix --ignore-scripts
 
       - name: Reinstall from refreshed lockfile
@@ -56,13 +55,10 @@ jobs:
       - name: Enforce production audit threshold
         run: npm audit --omit=dev --audit-level=high
 
-      - name: Commit refreshed dependency files
+      - name: Commit refreshed dependencies and remove bootstrap workflow
         shell: bash
         run: |
-          if git diff --quiet -- package.json package-lock.json; then
-            echo "No dependency changes to commit."
-            exit 0
-          fi
+          git rm .github/workflows/dependency-refresh.yml
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
